@@ -1,7 +1,7 @@
 ---
 namespace: jeremycohoe
 name: iosxe_gnmi
-version: 1.0.3
+version: 1.0.4
 readme: README.md
 authors:
   - John Cohoe <jcohoe@cisco.com>
@@ -23,10 +23,10 @@ tags:
   - automation
   - catalyst
 dependencies: {}
-repository: https://github.com/jcohoe/ansible-gnmi
-documentation: https://github.com/jcohoe/ansible-gnmi/blob/main/README.md
-homepage: https://github.com/jcohoe/ansible-gnmi
-issues: https://github.com/jcohoe/ansible-gnmi/issues
+repository: https://github.com/jeremycohoe/ansible-gnmi
+documentation: https://github.com/jeremycohoe/ansible-gnmi/blob/main/README.md
+homepage: https://github.com/jeremycohoe/ansible-gnmi
+issues: https://github.com/jeremycohoe/ansible-gnmi/issues
 build_ignore:
   - '*.tar.gz'
   - .git

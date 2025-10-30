@@ -76,7 +76,7 @@ gnmi_ca_cert:  # Empty - no certificate needed
 
 **Encrypt password:**
 ```bash
-ansible-vault encrypt_string 'EN-TME-Cisco123' --name 'gnmi_password'
+ansible-vault encrypt_string 'your-secure-password' --name 'gnmi_password'
 ```
 
 **Add to group_vars:**
@@ -221,7 +221,7 @@ gnmi_ca_cert: "{{ playbook_dir }}/../certs/router1-cert.pem"
 EOF
 
 # 3. Update group_vars with vaulted password
-ansible-vault encrypt_string 'EN-TME-Cisco123' --name 'gnmi_password' >> examples/group_vars/iosxe_devices.yml
+ansible-vault encrypt_string 'your-secure-password' --name 'gnmi_password' >> examples/group_vars/iosxe_devices.yml
 
 # 4. Run playbook
 ansible-playbook -i examples/inventory_with_certs.ini examples/playbook_with_inventory_vars.yml --ask-vault-pass

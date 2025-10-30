@@ -109,7 +109,7 @@ gnxi
  gnxi secure-server
 !
 ! Configure user authentication
-username admin privilege 15 secret EN-TME-Cisco123
+username admin privilege 15 secret your-secure-password
 !
 ! Optional: Configure custom certificates for production
 ! crypto pki trustpoint ...

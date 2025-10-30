@@ -14,7 +14,7 @@
     gnmi_host: "192.168.1.1"
     gnmi_port: 9339
     gnmi_username: "admin"
-    gnmi_password: "cisco123"
+    gnmi_password: "your-password"
 
   tasks:
     # Basic GET operation - retrieve all interface configurations

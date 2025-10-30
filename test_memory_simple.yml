@@ -1,0 +1,53 @@
+---
+# Test different memory query approaches
+- name: Test Memory Queries
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    device_host: "10.85.134.65"
+    device_port: 9339
+    device_username: "admin"
+    device_password: "your-password-here"
+
+  tasks:
+    - name: Try getting system state (might include memory)
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ device_host }}"
+        port: "{{ device_port }}"
+        username: "{{ device_username }}"
+        password: "{{ device_password }}"
+        operation: get
+        encoding: json_ietf
+        ca_cert: "/tmp/device_cert.pem"
+        paths:
+          - /system/state
+        datatype: state
+      register: system_state
+      ignore_errors: true
+
+    - name: Display system state
+      debug:
+        var: system_state
+      when: system_state is succeeded
+
+    - name: Try components state
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ device_host }}"
+        port: "{{ device_port }}"
+        username: "{{ device_username }}"
+        password: "{{ device_password }}"
+        operation: get
+        encoding: json_ietf
+        ca_cert: "/tmp/device_cert.pem"
+        paths:
+          - /components
+        datatype: state
+      register: components
+      ignore_errors: true
+
+    - name: Display components (may include memory info)
+      debug:
+        msg: "{{ components.data | to_nice_json }}"
+      when: components is succeeded

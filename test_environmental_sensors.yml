@@ -1,0 +1,67 @@
+---
+# Environmental sensors test playbook for multiple Cisco IOS XE devices
+- name: Get Environmental Sensor Data from Cisco IOS XE Devices
+  hosts: iosxe_devices
+  gather_facts: false
+
+  tasks:
+    - name: Get environmental sensors data
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ ansible_host }}"
+        port: "{{ gnmi_port }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        ca_cert: "{{ gnmi_ca_cert }}"
+        operation: get
+        encoding: "{{ gnmi_encoding }}"
+        origin: rfc7951
+        paths:
+          - /Cisco-IOS-XE-environment-oper:environment-sensors/environment-sensor
+        datatype: all
+      register: env_sensors
+
+    - name: Display raw sensor data
+      debug:
+        var: env_sensors.data
+
+    - name: Display formatted environmental sensors
+      debug:
+        msg: |
+          ========================================
+          {{ inventory_hostname }} - Environmental Sensors
+          ========================================
+          {% for key, sensor in env_sensors.data.items() %}
+          Sensor: {{ sensor.name }}
+            Location: {{ sensor.location }}
+            State: {{ sensor.state }}
+            Current Reading: {{ sensor['current-reading'] }} {{ sensor['sensor-units'] }}
+            {% if sensor['low-critical-threshold'] is defined %}
+            Low Critical: {{ sensor['low-critical-threshold'] }} {{ sensor['sensor-units'] }}
+            {% endif %}
+            {% if sensor['low-normal-threshold'] is defined %}
+            Low Normal: {{ sensor['low-normal-threshold'] }} {{ sensor['sensor-units'] }}
+            {% endif %}
+            {% if sensor['high-normal-threshold'] is defined %}
+            High Normal: {{ sensor['high-normal-threshold'] }} {{ sensor['sensor-units'] }}
+            {% endif %}
+            {% if sensor['high-critical-threshold'] is defined %}
+            High Critical: {{ sensor['high-critical-threshold'] }} {{ sensor['sensor-units'] }}
+            {% endif %}
+          ----------------------------------------
+          {% endfor %}
+
+- name: Environmental Summary Report
+  hosts: localhost
+  gather_facts: false
+  run_once: true
+  tasks:
+    - name: Summary
+      debug:
+        msg:
+          - "========================================"
+          - "Environmental Sensor Data Retrieved"
+          - "========================================"
+          - "Successfully queried {{ groups['iosxe_devices'] | length }} devices"
+          - "Using Cisco-IOS-XE-environment-oper model"
+          - "Origin: rfc7951"
+          - "========================================"

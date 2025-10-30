@@ -1,0 +1,29 @@
+# Cisco IOS XE gNMI Ansible Collection - Python Dependencies
+# Install with: pip install -r requirements.txt
+
+# gNMI and gRPC dependencies (REQUIRED)
+grpcio>=1.50.0,<2.0.0
+grpcio-tools>=1.50.0,<2.0.0
+protobuf>=4.21.0,<5.0.0
+
+# Cisco gNMI proto files (REQUIRED - choose one)
+# Option 1: cisco-gnmi (recommended if available)
+cisco-gnmi>=1.0.0
+
+# Option 2: Use gnmi-proto if cisco-gnmi not available
+# Uncomment the line below and comment out cisco-gnmi above
+# gnmi-proto>=0.0.1
+
+# Certificate and crypto handling (REQUIRED)
+cryptography>=38.0.0,<42.0.0
+
+# Ansible requirements (REQUIRED)
+ansible-core>=2.12.0,<2.17.0
+
+# Additional dependencies
+# These may be pulled in by ansible-core but listed for clarity
+jinja2>=3.0.0
+PyYAML>=5.4.0
+
+# Optional: For better JSON handling
+# python-json-logger>=2.0.0

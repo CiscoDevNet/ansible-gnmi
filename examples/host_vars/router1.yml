@@ -1,0 +1,15 @@
+---
+# host_vars/router1.yml
+# Device-specific variables for router1
+#
+# This overrides group_vars for this specific device
+
+# Device connection
+ansible_host: 10.85.134.65
+
+# Device-specific certificate (overrides group_vars)
+gnmi_ca_cert: /tmp/device_cert.pem
+
+# Could override other settings if needed:
+# gnmi_port: 9339
+# gnmi_timeout: 60  # Longer timeout for this device

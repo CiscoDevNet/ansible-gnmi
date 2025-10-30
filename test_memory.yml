@@ -1,0 +1,45 @@
+---
+# Test playbook for retrieving Cisco IOS XE memory statistics via gNMI
+- name: Get Memory Statistics from Cisco IOS XE
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    device_host: "10.85.134.65"
+    device_port: 9339
+    device_username: "admin"
+    device_password: "your-password-here"
+
+  tasks:
+    - name: Get memory statistics
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ device_host }}"
+        port: "{{ device_port }}"
+        username: "{{ device_username }}"
+        password: "{{ device_password }}"
+        operation: get
+        encoding: json_ietf
+        ca_cert: "/tmp/device_cert.pem"
+        origin: rfc7951
+        paths:
+          - /Cisco-IOS-XE-memory-oper:memory-statistics/memory-statistic
+        datatype: all
+      register: memory_result
+
+    - name: Display memory statistics
+      debug:
+        var: memory_result.data
+
+    - name: Display formatted memory info
+      debug:
+        msg: |
+          Memory Pool: {{ item.value.name }}
+            Total Memory: {{ item.value['total-memory'] }} bytes ({{ (item.value['total-memory'] | int / 1048576) | round(2) }} MB)
+            Used Memory: {{ item.value['used-memory'] }} bytes ({{ (item.value['used-memory'] | int / 1048576) | round(2) }} MB)
+            Free Memory: {{ item.value['free-memory'] }} bytes ({{ (item.value['free-memory'] | int / 1048576) | round(2) }} MB)
+            Lowest Usage: {{ item.value['lowest-usage'] }} bytes
+            Highest Usage: {{ item.value['highest-usage'] }} bytes
+            Usage Percentage: {{ ((item.value['used-memory'] | int / item.value['total-memory'] | int) * 100) | round(2) }}%
+      loop: "{{ memory_result.data | dict2items }}"
+      when: memory_result is succeeded

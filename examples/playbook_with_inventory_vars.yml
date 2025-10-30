@@ -1,0 +1,98 @@
+---
+# Example playbook showing proper use of inventory variables for certificates
+#
+# Run with: ansible-playbook -i examples/inventory_with_certs.ini examples/playbook_with_inventory_vars.yml
+#
+# This demonstrates best practice: credentials and certificates defined once in inventory,
+# used across all tasks without repetition
+
+- name: Cisco IOS XE gNMI Operations with Inventory Variables
+  hosts: iosxe_devices
+  gather_facts: false
+
+  tasks:
+    # Example 1: Get hostname (OpenConfig model)
+    - name: Get system hostname
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ ansible_host }}"
+        port: "{{ gnmi_port }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        ca_cert: "{{ gnmi_ca_cert | default(omit) }}"
+        insecure: "{{ gnmi_insecure | default(false) }}"
+        operation: get
+        encoding: "{{ gnmi_encoding }}"
+        paths:
+          - /system/config/hostname
+      register: hostname_result
+
+    - name: Display hostname
+      debug:
+        msg: "Device {{ inventory_hostname }} hostname: {{ hostname_result.data['/system/config/hostname'] }}"
+
+    # Example 2: Get memory statistics (Cisco native model with origin)
+    - name: Get memory statistics
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ ansible_host }}"
+        port: "{{ gnmi_port }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        ca_cert: "{{ gnmi_ca_cert | default(omit) }}"
+        insecure: "{{ gnmi_insecure | default(false) }}"
+        operation: get
+        encoding: "{{ gnmi_encoding }}"
+        origin: rfc7951  # Required for Cisco native models
+        paths:
+          - /Cisco-IOS-XE-memory-oper:memory-statistics/memory-statistic
+      register: memory_result
+
+    - name: Display memory usage
+      debug:
+        msg: |
+          {{ inventory_hostname }} Memory:
+          {% for key, pool in memory_result.data.items() %}
+            {{ pool.name }}: {{ ((pool['used-memory'] | int / pool['total-memory'] | int) * 100) | round(2) }}% used
+          {% endfor %}
+
+    # Example 3: Get interface configuration
+    - name: Get all interfaces
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ ansible_host }}"
+        port: "{{ gnmi_port }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        ca_cert: "{{ gnmi_ca_cert | default(omit) }}"
+        insecure: "{{ gnmi_insecure | default(false) }}"
+        operation: get
+        encoding: "{{ gnmi_encoding }}"
+        paths:
+          - /interfaces/interface
+        datatype: config
+      register: interfaces_result
+
+    - name: Count interfaces
+      debug:
+        msg: "{{ inventory_hostname }} has {{ interfaces_result.data | length }} interfaces configured"
+
+    # Example 4: Set interface description
+    - name: Update interface description
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ ansible_host }}"
+        port: "{{ gnmi_port }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        ca_cert: "{{ gnmi_ca_cert | default(omit) }}"
+        insecure: "{{ gnmi_insecure | default(false) }}"
+        operation: set
+        encoding: "{{ gnmi_encoding }}"
+        paths:
+          - /interfaces/interface[name=GigabitEthernet1]/config/description
+        config:
+          description: "Configured via Ansible gNMI - {{ ansible_date_time.iso8601 }}"
+      when: false  # Set to true to actually update
+
+# Notice: All tasks use the same variables from inventory
+# - No hardcoded credentials
+# - No repeated certificate paths
+# - Easy to update for all devices by changing inventory
+# - Can use ansible-vault for password encryption

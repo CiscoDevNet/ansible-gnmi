@@ -1,0 +1,274 @@
+---
+# Example playbook demonstrating Subscribe operations with Cisco IOS XE gNMI
+#
+# Prerequisites:
+# - gNMI must be enabled on the target device
+# - Python dependencies installed (see requirements.txt)
+# - Valid credentials for the device
+# - PROTO encoding requires IOS XE Dublin 17.11.1+
+
+- name: Cisco IOS XE gNMI Subscribe Operations Examples
+  hosts: iosxe_devices
+  gather_facts: false
+
+  vars:
+    gnmi_host: "192.168.1.1"
+    gnmi_port: 9339
+    gnmi_username: "admin"
+    gnmi_password: "cisco123"
+
+  tasks:
+    # Basic ONCE subscription - get snapshot
+    - name: Subscribe once to interface statistics
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: subscribe
+        subscribe_mode: once
+        subscriptions:
+          - path: /interfaces/interface[name=GigabitEthernet1]/state/counters
+            mode: target_defined
+      register: once_subscribe
+
+    - name: Display subscription updates
+      ansible.builtin.debug:
+        var: once_subscribe.updates
+
+    # Subscribe to multiple paths
+    - name: Subscribe to multiple interface paths
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: subscribe
+        subscribe_mode: once
+        subscriptions:
+          - path: /interfaces/interface[name=GigabitEthernet1]/state/counters
+            mode: target_defined
+          - path: /interfaces/interface[name=GigabitEthernet1]/state/admin-status
+            mode: target_defined
+          - path: /interfaces/interface[name=GigabitEthernet1]/state/oper-status
+            mode: target_defined
+      register: multi_subscribe
+
+    - name: Display all updates
+      ansible.builtin.debug:
+        var: multi_subscribe.updates
+
+    # SAMPLE mode subscription - periodic sampling
+    - name: Subscribe with sampling mode
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: subscribe
+        subscribe_mode: once
+        subscriptions:
+          - path: /interfaces/interface[name=GigabitEthernet1]/state/counters
+            mode: sample
+            sample_interval: 10  # Sample every 10 seconds
+      register: sample_subscribe
+
+    - name: Show sampled data
+      ansible.builtin.debug:
+        var: sample_subscribe.updates
+
+    # ON_CHANGE mode subscription - event-driven
+    - name: Subscribe to configuration changes
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: subscribe
+        subscribe_mode: once
+        subscriptions:
+          - path: /interfaces/interface/config
+            mode: on_change
+      register: onchange_subscribe
+
+    - name: Display configuration changes
+      ansible.builtin.debug:
+        var: onchange_subscribe.updates
+
+    # Subscribe to all interfaces
+    - name: Subscribe to all interface counters
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: subscribe
+        subscribe_mode: once
+        subscriptions:
+          - path: /interfaces/interface/state/counters
+            mode: target_defined
+      register: all_counters
+
+    - name: Parse and display counter statistics
+      ansible.builtin.debug:
+        msg: "Received {{ all_counters.updates | length }} counter updates"
+
+    # Subscribe with PROTO encoding (IOS XE 17.11.1+)
+    - name: Subscribe with PROTO encoding
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: subscribe
+        subscribe_mode: once
+        encoding: proto
+        subscriptions:
+          - path: /interfaces/interface[name=GigabitEthernet1]/state
+            mode: target_defined
+      register: proto_subscribe
+      when: false  # Enable only on IOS XE 17.11.1+
+
+    - name: Display PROTO encoded data
+      ansible.builtin.debug:
+        var: proto_subscribe.updates
+      when: false
+
+    # Subscribe to system information
+    - name: Subscribe to system state
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: subscribe
+        subscribe_mode: once
+        subscriptions:
+          - path: /system/state
+            mode: target_defined
+      register: system_state
+
+    - name: Display system information
+      ansible.builtin.debug:
+        var: system_state.updates
+
+    # Extract specific metrics from subscription
+    - name: Subscribe and extract specific metrics
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: subscribe
+        subscribe_mode: once
+        subscriptions:
+          - path: /interfaces/interface[name=GigabitEthernet1]/state/counters
+            mode: target_defined
+      register: counter_data
+
+    - name: Extract in-octets counter
+      ansible.builtin.set_fact:
+        in_octets: "{{ counter_data.updates[0].value['in-octets'] | default(0) }}"
+      when: counter_data.updates | length > 0
+
+    - name: Display extracted metric
+      ansible.builtin.debug:
+        msg: "Interface GigabitEthernet1 received {{ in_octets }} octets"
+      when: in_octets is defined
+
+    # Monitoring example - save subscription data
+    - name: Subscribe and save metrics to file
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: subscribe
+        subscribe_mode: once
+        subscriptions:
+          - path: /interfaces/interface/state/counters
+            mode: target_defined
+      register: metrics_data
+
+    - name: Save metrics to JSON file
+      ansible.builtin.copy:
+        content: "{{ metrics_data.updates | to_nice_json }}"
+        dest: "./metrics/{{ gnmi_host }}_{{ ansible_date_time.iso8601_basic_short }}.json"
+      when: metrics_data.updates | length > 0
+
+    # Subscribe to specific YANG model paths
+    - name: Subscribe to OpenConfig interfaces
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: subscribe
+        subscribe_mode: once
+        encoding: json_ietf
+        subscriptions:
+          - path: /openconfig-interfaces:interfaces/interface
+            mode: target_defined
+      register: openconfig_data
+      when: false  # Enable if OpenConfig models are supported
+
+    - name: Display OpenConfig data
+      ansible.builtin.debug:
+        var: openconfig_data.updates
+      when: false
+
+    # Error handling for subscriptions
+    - name: Subscribe with error handling
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: subscribe
+        subscribe_mode: once
+        subscriptions:
+          - path: /invalid/path
+            mode: target_defined
+      register: error_subscribe
+      ignore_errors: true
+
+    - name: Handle subscription error
+      ansible.builtin.debug:
+        msg: "Subscription failed: {{ error_subscribe.msg }}"
+      when: error_subscribe.failed
+
+    # Conditional subscription based on device state
+    - name: Get device hostname first
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: get
+        paths:
+          - /system/config/hostname
+      register: device_hostname
+
+    - name: Subscribe only if hostname matches
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: subscribe
+        subscribe_mode: once
+        subscriptions:
+          - path: /interfaces/interface/state/counters
+            mode: target_defined
+      register: conditional_subscribe
+      when: device_hostname.data['/system/config/hostname'] == "CORE-RTR-01"
+
+    # Aggregate subscription data across multiple devices
+    - name: Subscribe to interfaces on all devices
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ item }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: subscribe
+        subscribe_mode: once
+        subscriptions:
+          - path: /interfaces/interface/state/counters
+            mode: target_defined
+      loop:
+        - 192.168.1.1
+        - 192.168.1.2
+        - 192.168.1.3
+      register: multi_device_subscribe
+      when: false  # Enable for multi-device scenarios
+
+    - name: Aggregate results
+      ansible.builtin.debug:
+        msg: "Collected data from {{ multi_device_subscribe.results | length }} devices"
+      when: false

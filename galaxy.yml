@@ -1,0 +1,40 @@
+---
+namespace: jeremycohoe
+name: iosxe_gnmi
+version: 1.0.2
+readme: README.md
+authors:
+  - John Cohoe <jcohoe@cisco.com>
+description: >-
+  Ansible collection for Cisco IOS XE gNMI (gRPC Network Management Interface) operations.
+  Provides comprehensive support for GET and SET operations using OpenConfig,
+  Cisco Native YANG, IETF, and SNMP MIB models. Production-ready with TLS support,
+  multi-device management, and extensive examples.
+license_file: LICENSE
+tags:
+  - cisco
+  - iosxe
+  - gnmi
+  - grpc
+  - networking
+  - yang
+  - openconfig
+  - telemetry
+  - automation
+  - catalyst
+dependencies: {}
+repository: https://github.com/jcohoe/ansible-gnmi
+documentation: https://github.com/jcohoe/ansible-gnmi/blob/main/README.md
+homepage: https://github.com/jcohoe/ansible-gnmi
+issues: https://github.com/jcohoe/ansible-gnmi/issues
+build_ignore:
+  - '*.tar.gz'
+  - .git
+  - .gitignore
+  - __pycache__
+  - '*.pyc'
+  - .vscode
+  - venv
+  - .pytest_cache
+  - htmlcov
+  - .coverage

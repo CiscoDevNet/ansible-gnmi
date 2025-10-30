@@ -1,0 +1,59 @@
+---
+# GET operation - Retrieve IETF interfaces using RFC 7951 origin
+- name: Get IETF Interfaces via gNMI
+  hosts: router2
+  gather_facts: false
+
+  tasks:
+    - name: Get IETF interfaces (RFC 7951 origin)
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ ansible_host }}"
+        port: "{{ gnmi_port }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        ca_cert: "{{ gnmi_ca_cert }}"
+        operation: get
+        encoding: "{{ gnmi_encoding }}"
+        origin: rfc7951
+        paths:
+          - /ietf-interfaces:interfaces
+        datatype: all
+      register: ietf_interfaces
+
+    - name: Display interface count
+      debug:
+        msg: "Total interfaces found: {{ ietf_interfaces.data['/ietf-interfaces:interfaces']['interface'] | length }}"
+
+    - name: Display first 5 interfaces
+      debug:
+        msg: |
+          ========================================
+          IETF Interface: {{ item.name }}
+          ========================================
+          Description: {{ item.description | default('N/A') }}
+          Type: {{ item.type }}
+          Enabled: {{ item.enabled }}
+          ========================================
+      loop: "{{ ietf_interfaces.data['/ietf-interfaces:interfaces']['interface'][:5] }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Display operational interfaces (up status)
+      debug:
+        msg: "Interface {{ item.name }} is UP"
+      loop: "{{ ietf_interfaces.data['/ietf-interfaces:interfaces']['interface'] }}"
+      when:
+        - item['ietf-interfaces:enabled'] is defined
+        - item['ietf-interfaces:enabled'] == true
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Summary statistics
+      debug:
+        msg: |
+          ========================================
+          IETF Interfaces Summary
+          ========================================
+          Total Interfaces: {{ ietf_interfaces.data['/ietf-interfaces:interfaces']['interface'] | length }}
+          Enabled Interfaces: {{ ietf_interfaces.data['/ietf-interfaces:interfaces']['interface'] | selectattr('enabled', 'defined') | selectattr('enabled', 'equalto', true) | list | length }}
+          ========================================

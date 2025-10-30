@@ -1,0 +1,4 @@
+---
+# host_vars for router2 (jcohoe-c9300-2.cisco.com)
+ansible_host: jcohoe-c9300-2.cisco.com
+gnmi_ca_cert: "{{ playbook_dir }}/certs/router2-cert.pem"

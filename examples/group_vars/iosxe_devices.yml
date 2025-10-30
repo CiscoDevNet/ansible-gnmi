@@ -1,0 +1,39 @@
+---
+# group_vars/iosxe_devices.yml
+# Common variables for all Cisco IOS XE devices
+#
+# This file is automatically loaded when you target the 'iosxe_devices' group
+# Best practice: Store credentials, certificates, and connection settings here
+
+# gNMI Connection Settings
+gnmi_port: 9339
+gnmi_timeout: 30
+gnmi_encoding: json_ietf
+
+# Authentication
+gnmi_username: admin
+# Password should be encrypted with ansible-vault:
+# ansible-vault encrypt_string 'your_password' --name 'gnmi_password'
+gnmi_password: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          # This is a placeholder - replace with actual vaulted password
+          # Run: ansible-vault encrypt_string 'EN-TME-Cisco123' --name 'gnmi_password'
+
+# TLS/SSL Certificate Settings
+# Option 1: Use a common CA certificate for all devices
+gnmi_ca_cert: /etc/ssl/certs/cisco-ca.pem
+
+# Option 2: Use device-specific certificates (override in host_vars)
+# gnmi_ca_cert: "{{ playbook_dir }}/certs/{{ inventory_hostname }}-cert.pem"
+
+# Option 3: Client certificate for mutual TLS (if required)
+# gnmi_client_cert: /etc/ssl/certs/ansible-client.pem
+# gnmi_client_key: /etc/ssl/private/ansible-client-key.pem
+
+# Security Mode
+# Set to true only for testing/lab environments with self-signed certs
+gnmi_insecure: false
+
+# Ansible Connection Settings
+ansible_connection: local
+ansible_python_interpreter: "{{ ansible_playbook_python }}"

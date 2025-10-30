@@ -1,0 +1,6 @@
+---
+requires_ansible: '>=2.12'
+python_dependencies:
+  - grpcio>=1.50.0
+  - protobuf>=4.21.0
+  - cryptography>=38.0.0

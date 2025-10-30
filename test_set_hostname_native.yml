@@ -1,0 +1,70 @@
+---
+# SET operation - Change hostname using Cisco native YANG model
+- name: Set Hostname via Cisco Native YANG (RFC 7951)
+  hosts: router2
+  gather_facts: false
+
+  tasks:
+    - name: Get current hostname (Cisco native)
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ ansible_host }}"
+        port: "{{ gnmi_port }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        ca_cert: "{{ gnmi_ca_cert }}"
+        operation: get
+        encoding: "{{ gnmi_encoding }}"
+        origin: rfc7951
+        paths:
+          - /Cisco-IOS-XE-native:native/hostname
+        datatype: config
+      register: current_hostname
+
+    - name: Display current hostname
+      debug:
+        var: current_hostname.data
+
+    - name: Set new hostname using Cisco native YANG
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ ansible_host }}"
+        port: "{{ gnmi_port }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        ca_cert: "{{ gnmi_ca_cert }}"
+        operation: set
+        encoding: "{{ gnmi_encoding }}"
+        origin: rfc7951
+        config:
+          - path: "/Cisco-IOS-XE-native:native/hostname"
+            value: "set-by-ys-gnmi"
+      register: set_result
+
+    - name: Display SET result
+      debug:
+        var: set_result
+
+    - name: Verify new hostname
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ ansible_host }}"
+        port: "{{ gnmi_port }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        ca_cert: "{{ gnmi_ca_cert }}"
+        operation: get
+        encoding: "{{ gnmi_encoding }}"
+        origin: rfc7951
+        paths:
+          - /Cisco-IOS-XE-native:native/hostname
+        datatype: config
+      register: verify_hostname
+
+    - name: Display verification
+      debug:
+        msg: |
+          ========================================
+          Hostname Change Summary (Cisco Native)
+          ========================================
+          Old Hostname: {{ current_hostname.data['/Cisco-IOS-XE-native:native/hostname'] }}
+          New Hostname: {{ verify_hostname.data['/Cisco-IOS-XE-native:native/hostname'] }}
+          Change Status: SUCCESS
+          ========================================

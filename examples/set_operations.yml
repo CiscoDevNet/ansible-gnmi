@@ -1,0 +1,244 @@
+---
+# Example playbook demonstrating SET operations with Cisco IOS XE gNMI
+#
+# Prerequisites:
+# - gNMI must be enabled on the target device
+# - Python dependencies installed (see requirements.txt)
+# - Valid credentials with write access
+# - IMPORTANT: These operations will modify device configuration!
+
+- name: Cisco IOS XE gNMI SET Operations Examples
+  hosts: iosxe_devices
+  gather_facts: false
+
+  vars:
+    gnmi_host: "192.168.1.1"
+    gnmi_port: 9339
+    gnmi_username: "admin"
+    gnmi_password: "cisco123"
+
+  tasks:
+    # Simple UPDATE operation - set interface description
+    - name: Set interface description
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: set
+        state: present
+        config:
+          - path: /interfaces/interface[name=GigabitEthernet1]/config/description
+            value: "Uplink to Core Switch"
+      register: set_description
+
+    - name: Display result
+      ansible.builtin.debug:
+        msg: "Description set successfully: {{ set_description.changed }}"
+
+    # UPDATE multiple paths
+    - name: Configure multiple interface parameters
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: set
+        state: present
+        config:
+          - path: /interfaces/interface[name=GigabitEthernet1]/config/description
+            value: "Uplink to Core"
+          - path: /interfaces/interface[name=GigabitEthernet1]/config/enabled
+            value: true
+          - path: /interfaces/interface[name=GigabitEthernet1]/config/mtu
+            value: 1500
+      register: multi_update
+
+    - name: Show update results
+      ansible.builtin.debug:
+        var: multi_update.data
+
+    # REPLACE operation - replace entire interface config
+    - name: Replace interface configuration
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: set
+        state: present
+        replace: true
+        config:
+          - path: /interfaces/interface[name=GigabitEthernet2]/config
+            value:
+              name: GigabitEthernet2
+              description: "Server Connection"
+              enabled: true
+              mtu: 9000
+      register: replace_config
+
+    - name: Display replace result
+      ansible.builtin.debug:
+        var: replace_config
+
+    # DELETE operation - remove configuration
+    - name: Delete interface description
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: set
+        state: absent
+        paths:
+          - /interfaces/interface[name=GigabitEthernet3]/config/description
+      register: delete_desc
+
+    - name: Show deletion result
+      ansible.builtin.debug:
+        msg: "Description deleted: {{ delete_desc.changed }}"
+
+    # Using check mode (dry-run)
+    - name: Check mode - test changes without applying
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: set
+        state: present
+        config:
+          - path: /interfaces/interface[name=GigabitEthernet1]/config/mtu
+            value: 9000
+      check_mode: true
+      register: check_result
+
+    - name: Display check mode result
+      ansible.builtin.debug:
+        msg: "Would change: {{ check_result.changed }}, Message: {{ check_result.msg }}"
+
+    # Using diff mode to see changes
+    - name: Set with diff mode enabled
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: set
+        state: present
+        config:
+          - path: /interfaces/interface[name=GigabitEthernet1]/config/description
+            value: "Updated Description"
+      diff: true
+      register: diff_result
+
+    - name: Show differences
+      ansible.builtin.debug:
+        var: diff_result.diff
+
+    # Create backup before making changes
+    - name: Set configuration with backup
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: set
+        state: present
+        backup: true
+        backup_path: ./backups
+        config:
+          - path: /interfaces/interface[name=GigabitEthernet1]/config/description
+            value: "Production Link"
+      register: backup_result
+
+    - name: Display backup location
+      ansible.builtin.debug:
+        msg: "Backup saved to: {{ backup_result.backup_file }}"
+
+    # Configure system settings
+    - name: Set system hostname
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: set
+        state: present
+        config:
+          - path: /system/config/hostname
+            value: "CORE-RTR-01"
+      register: hostname_result
+
+    # Configure VLAN
+    - name: Create and configure VLAN
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: set
+        state: present
+        config:
+          - path: /network-instances/network-instance[name=default]/vlans/vlan[vlan-id=100]/config
+            value:
+              vlan-id: 100
+              name: "DATA_VLAN"
+              status: ACTIVE
+      register: vlan_result
+      when: false  # Enable when VLAN model is supported
+
+    # Idempotent configuration - will only change if needed
+    - name: Ensure interface has correct configuration (idempotent)
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: set
+        state: present
+        config:
+          - path: /interfaces/interface[name=GigabitEthernet1]/config/description
+            value: "Uplink to Core"
+          - path: /interfaces/interface[name=GigabitEthernet1]/config/enabled
+            value: true
+      register: idempotent_result
+
+    - name: Show idempotent result
+      ansible.builtin.debug:
+        msg: "Changed: {{ idempotent_result.changed }}"
+
+    # Comprehensive example with all features
+    - name: Complete configuration with all features
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: set
+        state: present
+        encoding: json_ietf
+        backup: true
+        backup_path: ./backups
+        timeout: 60
+        config:
+          - path: /interfaces/interface[name=GigabitEthernet1]/config/description
+            value: "Managed by Ansible"
+          - path: /interfaces/interface[name=GigabitEthernet1]/config/enabled
+            value: true
+          - path: /interfaces/interface[name=GigabitEthernet1]/config/mtu
+            value: 1500
+      diff: true
+      register: complete_config
+
+    - name: Display complete results
+      ansible.builtin.debug:
+        var: complete_config
+
+    # Error handling example
+    - name: Attempt configuration that might fail
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: set
+        state: present
+        config:
+          - path: /interfaces/interface[name=InvalidInterface]/config/description
+            value: "This will fail"
+      register: error_result
+      ignore_errors: true
+
+    - name: Handle error
+      ansible.builtin.debug:
+        msg: "Operation failed as expected: {{ error_result.msg }}"
+      when: error_result.failed

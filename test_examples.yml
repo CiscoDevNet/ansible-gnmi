@@ -1,0 +1,148 @@
+---
+# Comprehensive test playbook for Cisco IOS XE gNMI
+# Tests GET operations with both OpenConfig and Cisco native models
+- name: Cisco IOS XE gNMI Examples
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    device_host: "10.85.134.65"
+    device_port: 9339
+    device_username: "admin"
+    device_password: "your-password-here"
+    device_cert: "/tmp/device_cert.pem"
+
+  tasks:
+    - name: "Test 1: Get system hostname (OpenConfig model)"
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ device_host }}"
+        port: "{{ device_port }}"
+        username: "{{ device_username }}"
+        password: "{{ device_password }}"
+        ca_cert: "{{ device_cert }}"
+        operation: get
+        encoding: json_ietf
+        paths:
+          - /system/config/hostname
+        datatype: config
+      register: hostname_result
+
+    - name: Display hostname
+      debug:
+        msg: "✓ Hostname: {{ hostname_result.data['/system/config/hostname'] }}"
+
+    - name: "Test 2: Get memory statistics (Cisco native model with origin)"
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ device_host }}"
+        port: "{{ device_port }}"
+        username: "{{ device_username }}"
+        password: "{{ device_password }}"
+        ca_cert: "{{ device_cert }}"
+        operation: get
+        encoding: json_ietf
+        origin: rfc7951
+        paths:
+          - /Cisco-IOS-XE-memory-oper:memory-statistics/memory-statistic
+        datatype: all
+      register: memory_result
+
+    - name: Display memory summary
+      debug:
+        msg: |
+          ✓ Memory Statistics:
+          {% for key, pool in memory_result.data.items() %}
+            - {{ pool.name }}: {{ ((pool['used-memory'] | int / pool['total-memory'] | int) * 100) | round(1) }}% used ({{ (pool['used-memory'] | int / 1048576) | round(0) }}MB / {{ (pool['total-memory'] | int / 1048576) | round(0) }}MB)
+          {% endfor %}
+
+    - name: "Test 3: Get specific interface configuration"
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ device_host }}"
+        port: "{{ device_port }}"
+        username: "{{ device_username }}"
+        password: "{{ device_password }}"
+        ca_cert: "{{ device_cert }}"
+        operation: get
+        encoding: json_ietf
+        paths:
+          - /interfaces/interface[name=GigabitEthernet1/0/1]
+        datatype: config
+      register: interface_result
+      ignore_errors: true
+
+    - name: Display interface config
+      debug:
+        msg: "✓ Interface GigabitEthernet1/0/1: {{ interface_result.data }}"
+      when: interface_result is succeeded
+
+    - name: Try different interface name if first failed
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ device_host }}"
+        port: "{{ device_port }}"
+        username: "{{ device_username }}"
+        password: "{{ device_password }}"
+        ca_cert: "{{ device_cert }}"
+        operation: get
+        encoding: json_ietf
+        paths:
+          - /interfaces/interface[name=Vlan311]
+        datatype: config
+      register: vlan_result
+      when: interface_result is failed
+
+    - name: Display VLAN config
+      debug:
+        msg: "✓ VLAN 311 config: {{ vlan_result.data }}"
+      when: vlan_result is succeeded
+
+    - name: "Test 4: Get all interface names (summary)"
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ device_host }}"
+        port: "{{ device_port }}"
+        username: "{{ device_username }}"
+        password: "{{ device_password }}"
+        ca_cert: "{{ device_cert }}"
+        operation: get
+        encoding: json_ietf
+        paths:
+          - /interfaces/interface/config/name
+        datatype: config
+      register: all_interfaces
+
+    - name: Display interface count
+      debug:
+        msg: "✓ Total interfaces configured: {{ all_interfaces.data | length }}"
+
+    - name: "Test 5: Get system state information"
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ device_host }}"
+        port: "{{ device_port }}"
+        username: "{{ device_username }}"
+        password: "{{ device_password }}"
+        ca_cert: "{{ device_cert }}"
+        operation: get
+        encoding: json_ietf
+        paths:
+          - /system/state
+        datatype: state
+      register: system_state
+      ignore_errors: true
+
+    - name: Display system state
+      debug:
+        var: system_state.data
+      when: system_state is succeeded
+
+    - name: "=== Test Summary ==="
+      debug:
+        msg:
+          - "=========================="
+          - "gNMI Test Results:"
+          - "=========================="
+          - "✓ Hostname retrieval: {{ 'PASSED' if hostname_result is succeeded else 'FAILED' }}"
+          - "✓ Memory statistics (native model): {{ 'PASSED' if memory_result is succeeded else 'FAILED' }}"
+          - "✓ Interface configuration: {{ 'PASSED' if (interface_result is succeeded or vlan_result is succeeded) else 'FAILED' }}"
+          - "✓ Interface listing: {{ 'PASSED' if all_interfaces is succeeded else 'FAILED' }}"
+          - "=========================="
+          - "All tests completed!"
+          - "=========================="

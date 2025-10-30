@@ -1,0 +1,192 @@
+---
+# Example playbook demonstrating GET operations with Cisco IOS XE gNMI
+#
+# Prerequisites:
+# - gNMI must be enabled on the target device
+# - Python dependencies installed (see requirements.txt)
+# - Valid credentials for the device
+
+- name: Cisco IOS XE gNMI GET Operations Examples
+  hosts: iosxe_devices
+  gather_facts: false
+
+  vars:
+    gnmi_host: "192.168.1.1"
+    gnmi_port: 9339
+    gnmi_username: "admin"
+    gnmi_password: "cisco123"
+
+  tasks:
+    # Basic GET operation - retrieve all interface configurations
+    - name: Get all interface configurations
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        port: "{{ gnmi_port }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: get
+        encoding: json_ietf
+        datatype: config
+        paths:
+          - /interfaces/interface
+      register: all_interfaces
+
+    - name: Display all interfaces
+      ansible.builtin.debug:
+        var: all_interfaces.data
+
+    # Get specific interface configuration
+    - name: Get GigabitEthernet1 configuration
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: get
+        paths:
+          - /interfaces/interface[name=GigabitEthernet1]
+        datatype: config
+      register: ge1_config
+
+    - name: Show GigabitEthernet1 configuration
+      ansible.builtin.debug:
+        var: ge1_config.data
+
+    # Get operational state (statistics)
+    - name: Get interface operational state
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: get
+        paths:
+          - /interfaces/interface[name=GigabitEthernet1]/state
+        datatype: state
+      register: ge1_state
+
+    - name: Display interface state
+      ansible.builtin.debug:
+        msg: "Interface GigabitEthernet1 state: {{ ge1_state.data }}"
+
+    # Get multiple paths in single operation
+    - name: Get multiple configurations
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: get
+        paths:
+          - /interfaces/interface[name=GigabitEthernet1]/config/description
+          - /interfaces/interface[name=GigabitEthernet1]/config/enabled
+          - /interfaces/interface[name=GigabitEthernet1]/config/mtu
+        datatype: config
+      register: multi_get
+
+    - name: Display multiple configurations
+      ansible.builtin.debug:
+        var: multi_get.data
+
+    # Get system configuration
+    - name: Get system hostname
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: get
+        paths:
+          - /system/config/hostname
+        datatype: config
+      register: hostname
+
+    - name: Display hostname
+      ansible.builtin.debug:
+        msg: "Device hostname: {{ hostname.data }}"
+
+    # Get all data (config + state)
+    - name: Get complete interface data
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: get
+        paths:
+          - /interfaces/interface[name=GigabitEthernet1]
+        datatype: all
+      register: complete_data
+
+    - name: Display complete interface data
+      ansible.builtin.debug:
+        var: complete_data.data
+
+    # Get with TLS certificate validation
+    - name: Get configuration with TLS certificates
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: get
+        paths:
+          - /system/config
+        ca_cert: /path/to/ca.pem
+        client_cert: /path/to/client.pem
+        client_key: /path/to/client-key.pem
+      register: secure_get
+      when: false  # Set to true when certificates are available
+
+    # Get with different encoding (JSON instead of JSON_IETF)
+    - name: Get with JSON encoding
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: get
+        encoding: json
+        paths:
+          - /interfaces/interface[name=GigabitEthernet1]/config
+        datatype: config
+      register: json_encoding
+
+    - name: Display JSON encoded data
+      ansible.builtin.debug:
+        var: json_encoding.data
+
+    # Get Cisco native YANG model data (requires origin parameter)
+    - name: Get memory statistics (Cisco native model)
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: get
+        encoding: json_ietf
+        origin: rfc7951  # Required for Cisco-IOS-XE-* models
+        paths:
+          - /Cisco-IOS-XE-memory-oper:memory-statistics/memory-statistic
+        datatype: all
+      register: memory_stats
+
+    - name: Display memory statistics
+      ansible.builtin.debug:
+        msg: |
+          Memory Pool: {{ item.value.name }}
+            Total: {{ (item.value['total-memory'] | int / 1048576) | round(2) }} MB
+            Used: {{ (item.value['used-memory'] | int / 1048576) | round(2) }} MB
+            Free: {{ (item.value['free-memory'] | int / 1048576) | round(2) }} MB
+            Usage: {{ ((item.value['used-memory'] | int / item.value['total-memory'] | int) * 100) | round(2) }}%
+      loop: "{{ memory_stats.data | dict2items }}"
+      when: memory_stats is succeeded
+
+    # Save retrieved data to file
+    - name: Get full configuration and save to file
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        operation: get
+        paths:
+          - /interfaces
+        datatype: config
+      register: full_config
+
+    - name: Save configuration to file
+      ansible.builtin.copy:
+        content: "{{ full_config.data | to_nice_json }}"
+        dest: "./configs/{{ gnmi_host }}_config.json"

@@ -1,0 +1,69 @@
+---
+# SET operation - Change hostname on jcohoe-c9300-2
+- name: Change Hostname via gNMI SET
+  hosts: router2
+  gather_facts: false
+
+  tasks:
+    - name: Get current hostname
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ ansible_host }}"
+        port: "{{ gnmi_port }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        ca_cert: "{{ gnmi_ca_cert }}"
+        operation: get
+        encoding: "{{ gnmi_encoding }}"
+        paths:
+          - /system/config/hostname
+        datatype: config
+      register: current_hostname
+
+    - name: Display current hostname
+      debug:
+        msg: "Current hostname: {{ current_hostname.data['/system/config/hostname'] }}"
+
+    - name: Set new hostname
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ ansible_host }}"
+        port: "{{ gnmi_port }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        ca_cert: "{{ gnmi_ca_cert }}"
+        operation: set
+        encoding: "{{ gnmi_encoding }}"
+        datatype: config
+        origin: openconfig
+        config:
+          - path: "/system/config/hostname"
+            value: "test"
+      register: set_result
+
+    - name: Display SET result
+      debug:
+        var: set_result
+
+    - name: Verify new hostname
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ ansible_host }}"
+        port: "{{ gnmi_port }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        ca_cert: "{{ gnmi_ca_cert }}"
+        operation: get
+        encoding: "{{ gnmi_encoding }}"
+        paths:
+          - /system/config/hostname
+        datatype: config
+      register: new_hostname
+
+    - name: Display verification
+      debug:
+        msg: |
+          ========================================
+          Hostname Change Summary
+          ========================================
+          Old Hostname: {{ current_hostname.data['/system/config/hostname'] }}
+          New Hostname: {{ new_hostname.data['/system/config/hostname'] }}
+          Change Status: {{ 'SUCCESS' if set_result.changed else 'FAILED' }}
+          ========================================

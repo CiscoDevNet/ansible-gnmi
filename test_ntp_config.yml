@@ -1,0 +1,103 @@
+---
+# NTP configuration test playbook using OpenConfig model
+- name: Get NTP Configuration from Cisco IOS XE Devices
+  hosts: iosxe_devices
+  gather_facts: false
+
+  tasks:
+    - name: Get NTP configuration (OpenConfig model)
+      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+        host: "{{ ansible_host }}"
+        port: "{{ gnmi_port }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        ca_cert: "{{ gnmi_ca_cert }}"
+        operation: get
+        encoding: "{{ gnmi_encoding }}"
+        paths:
+          - /system/ntp
+        datatype: all
+      register: ntp_config
+
+    - name: Display raw NTP data
+      debug:
+        var: ntp_config.data
+
+    - name: Display formatted NTP configuration
+      debug:
+        msg: |
+          ========================================
+          {{ inventory_hostname }} - NTP Configuration
+          ========================================
+          {% if ntp_config.data['/system/ntp'] is defined %}
+          {% set ntp = ntp_config.data['/system/ntp'] %}
+
+          {% if ntp.config is defined %}
+          NTP Enabled: {{ ntp.config.enabled | default('N/A') }}
+          NTP Auth Mismatch: {{ ntp.config['enable-ntp-auth'] | default('N/A') }}
+          {% endif %}
+
+          {% if ntp.state is defined %}
+          State - Enabled: {{ ntp.state.enabled | default('N/A') }}
+          State - NTP Auth: {{ ntp.state['enable-ntp-auth'] | default('N/A') }}
+          State - Auth Mismatch: {{ ntp.state['auth-mismatch'] | default('N/A') }}
+          {% endif %}
+
+          {% if ntp.servers is defined and ntp.servers.server is defined %}
+
+          NTP Servers:
+          {% for server in ntp.servers.server %}
+            ---
+            Address: {{ server.address }}
+            {% if server.config is defined %}
+            Config - Association Type: {{ server.config['association-type'] | default('N/A') }}
+            Config - IBurst: {{ server.config.iburst | default('N/A') }}
+            Config - Prefer: {{ server.config.prefer | default('N/A') }}
+            Config - Version: {{ server.config.version | default('N/A') }}
+            {% endif %}
+            {% if server.state is defined %}
+            State - Association Type: {{ server.state['association-type'] | default('N/A') }}
+            State - Stratum: {{ server.state.stratum | default('N/A') }}
+            State - Root Delay: {{ server.state['root-delay'] | default('N/A') }}
+            State - Root Dispersion: {{ server.state['root-dispersion'] | default('N/A') }}
+            State - Offset: {{ server.state.offset | default('N/A') }}
+            State - Poll Interval: {{ server.state['poll-interval'] | default('N/A') }}
+            {% endif %}
+          {% endfor %}
+          {% else %}
+          No NTP servers configured
+          {% endif %}
+
+          {% if ntp['ntp-keys'] is defined and ntp['ntp-keys']['ntp-key'] is defined %}
+
+          NTP Keys:
+          {% for key in ntp['ntp-keys']['ntp-key'] %}
+            Key ID: {{ key['key-id'] }}
+            {% if key.config is defined %}
+            Config - Key Type: {{ key.config['key-type'] | default('N/A') }}
+            {% endif %}
+            {% if key.state is defined %}
+            State - Key Type: {{ key.state['key-type'] | default('N/A') }}
+            {% endif %}
+          {% endfor %}
+          {% endif %}
+          {% else %}
+          No NTP data available
+          {% endif %}
+          ========================================
+
+- name: NTP Summary Report
+  hosts: localhost
+  gather_facts: false
+  run_once: true
+  tasks:
+    - name: Summary
+      debug:
+        msg:
+          - "========================================"
+          - "NTP Configuration Retrieved"
+          - "========================================"
+          - "Successfully queried {{ groups['iosxe_devices'] | length }} devices"
+          - "Using OpenConfig system/ntp model"
+          - "Namespace: http://openconfig.net/yang/system"
+          - "========================================"

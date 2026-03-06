@@ -25,10 +25,10 @@ tags:
   - automation
   - network
 dependencies: {}
-repository: https://github.com/jeremycohoe/ansible-gnmi
-documentation: https://github.com/jeremycohoe/ansible-gnmi/blob/main/README.md
-homepage: https://github.com/jeremycohoe/ansible-gnmi
-issues: https://github.com/jeremycohoe/ansible-gnmi/issues
+repository: https://github.com/CiscoDevNet/ansible-gnmi
+documentation: https://github.com/CiscoDevNet/ansible-gnmi/blob/main/README.md
+homepage: https://github.com/CiscoDevNet/ansible-gnmi
+issues: https://github.com/CiscoDevNet/ansible-gnmi/issues
 build_ignore:
   - '*.tar.gz'
   - .git

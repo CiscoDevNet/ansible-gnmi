@@ -42,7 +42,7 @@ ansible-galaxy collection install cisco.gnmi
 ### From source
 
 ```bash
-git clone https://github.com/jeremycohoe/ansible-gnmi.git
+git clone https://github.com/CiscoDevNet/ansible-gnmi.git
 cd ansible-gnmi
 ansible-galaxy collection build
 ansible-galaxy collection install cisco-gnmi-*.tar.gz

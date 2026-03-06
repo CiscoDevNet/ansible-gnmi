@@ -1,5 +1,5 @@
 ---
-# Example playbook demonstrating Subscribe operations with Cisco IOS XE gNMI
+# Example playbook demonstrating Subscribe operations with gNMI
 #
 # Prerequisites:
 # - gNMI must be enabled on the target device
@@ -7,7 +7,7 @@
 # - Valid credentials for the device
 # - PROTO encoding requires IOS XE Dublin 17.11.1+
 
-- name: Cisco IOS XE gNMI Subscribe Operations Examples
+- name: gNMI Subscribe Operations Examples
   hosts: iosxe_devices
   gather_facts: false
 
@@ -20,7 +20,7 @@
   tasks:
     # Basic ONCE subscription - get snapshot
     - name: Subscribe once to interface statistics
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -37,7 +37,7 @@
 
     # Subscribe to multiple paths
     - name: Subscribe to multiple interface paths
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -58,7 +58,7 @@
 
     # SAMPLE mode subscription - periodic sampling
     - name: Subscribe with sampling mode
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -76,7 +76,7 @@
 
     # ON_CHANGE mode subscription - event-driven
     - name: Subscribe to configuration changes
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -93,7 +93,7 @@
 
     # Subscribe to all interfaces
     - name: Subscribe to all interface counters
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -110,7 +110,7 @@
 
     # Subscribe with PROTO encoding (IOS XE 17.11.1+)
     - name: Subscribe with PROTO encoding
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -130,7 +130,7 @@
 
     # Subscribe to system information
     - name: Subscribe to system state
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -147,7 +147,7 @@
 
     # Extract specific metrics from subscription
     - name: Subscribe and extract specific metrics
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -170,7 +170,7 @@
 
     # Monitoring example - save subscription data
     - name: Subscribe and save metrics to file
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -189,7 +189,7 @@
 
     # Subscribe to specific YANG model paths
     - name: Subscribe to OpenConfig interfaces
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -209,7 +209,7 @@
 
     # Error handling for subscriptions
     - name: Subscribe with error handling
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -228,7 +228,7 @@
 
     # Conditional subscription based on device state
     - name: Get device hostname first
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -238,7 +238,7 @@
       register: device_hostname
 
     - name: Subscribe only if hostname matches
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -252,7 +252,7 @@
 
     # Aggregate subscription data across multiple devices
     - name: Subscribe to interfaces on all devices
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ item }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"

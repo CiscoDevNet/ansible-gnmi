@@ -1,5 +1,5 @@
 ---
-# Example playbook demonstrating SET operations with Cisco IOS XE gNMI
+# Example playbook demonstrating SET operations with gNMI
 #
 # Prerequisites:
 # - gNMI must be enabled on the target device
@@ -7,7 +7,7 @@
 # - Valid credentials with write access
 # - IMPORTANT: These operations will modify device configuration!
 
-- name: Cisco IOS XE gNMI SET Operations Examples
+- name: gNMI SET Operations Examples
   hosts: iosxe_devices
   gather_facts: false
 
@@ -20,7 +20,7 @@
   tasks:
     # Simple UPDATE operation - set interface description
     - name: Set interface description
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -37,7 +37,7 @@
 
     # UPDATE multiple paths
     - name: Configure multiple interface parameters
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -58,7 +58,7 @@
 
     # REPLACE operation - replace entire interface config
     - name: Replace interface configuration
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -80,7 +80,7 @@
 
     # DELETE operation - remove configuration
     - name: Delete interface description
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -96,7 +96,7 @@
 
     # Using check mode (dry-run)
     - name: Check mode - test changes without applying
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -114,7 +114,7 @@
 
     # Using diff mode to see changes
     - name: Set with diff mode enabled
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -132,7 +132,7 @@
 
     # Create backup before making changes
     - name: Set configuration with backup
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -151,7 +151,7 @@
 
     # Configure system settings
     - name: Set system hostname
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -164,7 +164,7 @@
 
     # Configure VLAN
     - name: Create and configure VLAN
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -181,7 +181,7 @@
 
     # Idempotent configuration - will only change if needed
     - name: Ensure interface has correct configuration (idempotent)
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -200,7 +200,7 @@
 
     # Comprehensive example with all features
     - name: Complete configuration with all features
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -226,7 +226,7 @@
 
     # Error handling example
     - name: Attempt configuration that might fail
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"

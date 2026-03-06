@@ -5,7 +5,7 @@
 # This overrides group_vars for this specific device
 
 # Device connection
-ansible_host: 10.85.134.65
+ansible_host: 198.51.100.1
 
 # Device-specific certificate (overrides group_vars)
 gnmi_ca_cert: /tmp/device_cert.pem

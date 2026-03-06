@@ -1,12 +1,12 @@
 ---
-# SET operation - Change hostname using Cisco native YANG model
-- name: Set Hostname via Cisco Native YANG (RFC 7951)
+# SET operation - Change hostname on router2.example.com
+- name: Change Hostname via gNMI SET
   hosts: router2
   gather_facts: false
 
   tasks:
-    - name: Get current hostname (Cisco native)
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+    - name: Get current hostname
+      cisco.gnmi.gnmi:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
@@ -14,18 +14,17 @@
         ca_cert: "{{ gnmi_ca_cert }}"
         operation: get
         encoding: "{{ gnmi_encoding }}"
-        origin: rfc7951
         paths:
-          - /Cisco-IOS-XE-native:native/hostname
+          - /system/config/hostname
         datatype: config
       register: current_hostname
 
     - name: Display current hostname
       debug:
-        var: current_hostname.data
+        msg: "Current hostname: {{ current_hostname.data['/system/config/hostname'] }}"
 
-    - name: Set new hostname using Cisco native YANG
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+    - name: Set new hostname
+      cisco.gnmi.gnmi:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
@@ -33,10 +32,11 @@
         ca_cert: "{{ gnmi_ca_cert }}"
         operation: set
         encoding: "{{ gnmi_encoding }}"
-        origin: rfc7951
+        datatype: config
+        origin: openconfig
         config:
-          - path: "/Cisco-IOS-XE-native:native/hostname"
-            value: "set-by-ys-gnmi"
+          - path: "/system/config/hostname"
+            value: "test"
       register: set_result
 
     - name: Display SET result
@@ -44,7 +44,7 @@
         var: set_result
 
     - name: Verify new hostname
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
@@ -52,19 +52,18 @@
         ca_cert: "{{ gnmi_ca_cert }}"
         operation: get
         encoding: "{{ gnmi_encoding }}"
-        origin: rfc7951
         paths:
-          - /Cisco-IOS-XE-native:native/hostname
+          - /system/config/hostname
         datatype: config
-      register: verify_hostname
+      register: new_hostname
 
     - name: Display verification
       debug:
         msg: |
           ========================================
-          Hostname Change Summary (Cisco Native)
+          Hostname Change Summary
           ========================================
-          Old Hostname: {{ current_hostname.data['/Cisco-IOS-XE-native:native/hostname'] }}
-          New Hostname: {{ verify_hostname.data['/Cisco-IOS-XE-native:native/hostname'] }}
-          Change Status: SUCCESS
+          Old Hostname: {{ current_hostname.data['/system/config/hostname'] }}
+          New Hostname: {{ new_hostname.data['/system/config/hostname'] }}
+          Change Status: {{ 'SUCCESS' if set_result.changed else 'FAILED' }}
           ========================================

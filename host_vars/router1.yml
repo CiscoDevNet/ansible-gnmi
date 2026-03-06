@@ -1,4 +1,4 @@
 ---
-# host_vars for router1 (10.85.134.65)
-ansible_host: 10.85.134.65
+# host_vars for router1
+ansible_host: 198.51.100.1
 gnmi_ca_cert: /tmp/device_cert.pem

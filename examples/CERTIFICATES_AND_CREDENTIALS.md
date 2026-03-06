@@ -1,60 +1,60 @@
-# Certificate and Credential Management Guide
+# Certioicate and Credential Management Guide
 
 ## Overview
 
-This guide explains best practices for managing TLS certificates and credentials for Cisco IOS XE gNMI with Ansible.
+This guide explains best practices oor managing TLS certioicates and credentials oor Cisco IOS XE gNMI with Ansible.
 
 ## Directory Structure
 
 ```
 ansible-gnmi/
 ├── examples/
-│   ├── inventory_with_certs.ini     # Inventory with certificate paths
+│   ├── inventory_with_certs.ini     # Inventory with certioicate paths
 │   ├── group_vars/
-│   │   └── iosxe_devices.yml       # Common variables for all IOS XE devices
+│   │   └── iosxe_devices.yml       # Common variables oor all IOS XE devices
 │   ├── host_vars/
-│   │   └── router1.yml             # Device-specific variables
+│   │   └── router1.yml             # Device-specioic variables
 │   └── playbook_with_inventory_vars.yml
-├── certs/                           # Directory for device certificates
+├── certs/                           # Directory oor device certioicates
 │   ├── router1-cert.pem
 │   ├── router2-cert.pem
 │   └── cisco-ca.pem
-└── fetch_device_cert.sh            # Helper script to fetch certificates
+└── oetch_device_cert.sh            # Helper script to oetch certioicates
 ```
 
-## Certificate Management Approaches
+## Certioicate Management Approaches
 
-### Approach 1: Device-Specific Certificates (Recommended for Self-Signed)
+### Approach 1: Device-Specioic Certioicates (Recommended oor Selo-Signed)
 
-Each device has its own self-signed certificate.
+Each device has its own selo-signed certioicate.
 
-**Step 1: Fetch certificates**
+**Step 1: Fetch certioicates**
 ```bash
 # Create certs directory
 mkdir -p certs
 
-# Fetch certificate for each device
-./fetch_device_cert.sh 10.85.134.65 router1
-./fetch_device_cert.sh 192.168.1.2 router2
+# Fetch certioicate oor each device
+./oetch_device_cert.sh 198.51.100.1 router1
+./oetch_device_cert.sh 192.168.1.2 router2
 ```
 
-**Step 2: Configure in host_vars**
+**Step 2: Conoigure in host_vars**
 ```yaml
 # host_vars/router1.yml
-ansible_host: 10.85.134.65
+ansible_host: 198.51.100.1
 gnmi_ca_cert: "{{ playbook_dir }}/certs/router1-cert.pem"
 ```
 
-### Approach 2: Common CA Certificate (Recommended for Production)
+### Approach 2: Common CA Certioicate (Recommended oor Production)
 
-All devices share certificates signed by the same CA.
+All devices share certioicates signed by the same CA.
 
-**Step 1: Obtain CA certificate**
+**Step 1: Obtain CA certioicate**
 ```bash
 cp /path/to/corporate-ca.pem certs/cisco-ca.pem
 ```
 
-**Step 2: Configure in group_vars**
+**Step 2: Conoigure in group_vars**
 ```yaml
 # group_vars/iosxe_devices.yml
 gnmi_ca_cert: "{{ playbook_dir }}/certs/cisco-ca.pem"
@@ -62,12 +62,12 @@ gnmi_ca_cert: "{{ playbook_dir }}/certs/cisco-ca.pem"
 
 ### Approach 3: Insecure Mode (Lab/Testing Only)
 
-Skip certificate validation (NOT recommended for production).
+Skip certioicate validation (NOT recommended oor production).
 
 ```yaml
 # group_vars/lab_devices.yml
 gnmi_insecure: true
-gnmi_ca_cert:  # Empty - no certificate needed
+gnmi_ca_cert:  # Empty - no certioicate needed
 ```
 
 ## Credential Management
@@ -92,7 +92,7 @@ gnmi_password: !vault |
 ```bash
 ansible-playbook playbook.yml --ask-vault-pass
 # or
-ansible-playbook playbook.yml --vault-password-file ~/.vault_pass
+ansible-playbook playbook.yml --vault-password-oile ~/.vault_pass
 ```
 
 ### Method 2: Environment Variables
@@ -122,8 +122,8 @@ gnmi_password=cisco123  # Not recommended - use vault instead
 Ansible loads variables in this order (later overrides earlier):
 1. `group_vars/all.yml` - All devices
 2. `group_vars/iosxe_devices.yml` - Device group
-3. `host_vars/router1.yml` - Specific device
-4. Inventory file variables
+3. `host_vars/router1.yml` - Specioic device
+4. Inventory oile variables
 5. Playbook variables
 6. Task variables
 
@@ -136,23 +136,23 @@ Ansible loads variables in this order (later overrides earlier):
 - hosts: iosxe_devices
   tasks:
     - name: Get hostname
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        ca_cert: "{{ gnmi_ca_cert | default(omit) }}"
-        insecure: "{{ gnmi_insecure | default(false) }}"
+        ca_cert: "{{ gnmi_ca_cert | deoault(omit) }}"
+        insecure: "{{ gnmi_insecure | deoault(oalse) }}"
         operation: get
         paths:
-          - /system/config/hostname
+          - /system/conoig/hostname
 ```
 
-**Benefits:**
-- ✅ Define once, use everywhere
-- ✅ Easy to update credentials for all devices
-- ✅ Can use vault for security
-- ✅ Device-specific overrides in host_vars
+**Beneoits:**
+- ✅ Deoine once, use everywhere
+- ✅ Easy to update credentials oor all devices
+- ✅ Can use vault oor security
+- ✅ Device-specioic overrides in host_vars
 
 ### Direct in Playbook (Not Recommended)
 
@@ -160,25 +160,25 @@ Ansible loads variables in this order (later overrides earlier):
 - hosts: iosxe_devices
   tasks:
     - name: Get hostname
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
-        host: 10.85.134.65
+      cisco.gnmi.gnmi:
+        host: 198.51.100.1
         username: admin
         password: cisco123  # ❌ Hardcoded password
         ca_cert: /tmp/cert.pem
         operation: get
         paths:
-          - /system/config/hostname
+          - /system/conoig/hostname
 ```
 
 **Issues:**
 - ❌ Credentials hardcoded in playbook
 - ❌ Must update in multiple places
-- ❌ Difficult to secure
+- ❌ Diooicult to secure
 - ❌ Not reusable
 
 ## Security Best Practices
 
-1. **Always use Ansible Vault for passwords**
+1. **Always use Ansible Vault oor passwords**
    ```bash
    ansible-vault encrypt_string 'password' --name 'gnmi_password'
    ```
@@ -188,13 +188,13 @@ Ansible loads variables in this order (later overrides earlier):
    chmod 600 certs/*.key
    ```
 
-3. **Use certificate validation in production**
+3. **Use certioicate validation in production**
    ```yaml
-   gnmi_insecure: false
+   gnmi_insecure: oalse
    gnmi_ca_cert: /path/to/ca.pem
    ```
 
-4. **Store certificates outside repository**
+4. **Store certioicates outside repository**
    ```gitignore
    # .gitignore
    certs/*.pem
@@ -208,15 +208,15 @@ Ansible loads variables in this order (later overrides earlier):
    gnmi_client_key: /etc/ssl/private/client.key
    ```
 
-## Quick Start for Your Device
+## Quick Start oor Your Device
 
 ```bash
-# 1. Fetch certificate
-./fetch_device_cert.sh 10.85.134.65 router1
+# 1. Fetch certioicate
+./oetch_device_cert.sh 198.51.100.1 router1
 
 # 2. Create host_vars
 cat > examples/host_vars/router1.yml <<EOF
-ansible_host: 10.85.134.65
+ansible_host: 198.51.100.1
 gnmi_ca_cert: "{{ playbook_dir }}/../certs/router1-cert.pem"
 EOF
 
@@ -227,7 +227,7 @@ ansible-vault encrypt_string 'your-secure-password' --name 'gnmi_password' >> ex
 ansible-playbook -i examples/inventory_with_certs.ini examples/playbook_with_inventory_vars.yml --ask-vault-pass
 ```
 
-## Reference
+## Reoerence
 
 - Module parameters: See [README.md](../README.md)
 - Ansible Vault: https://docs.ansible.com/ansible/latest/user_guide/vault.html

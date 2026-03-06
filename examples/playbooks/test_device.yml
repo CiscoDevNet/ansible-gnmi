@@ -1,19 +1,37 @@
 ---
-# Test different memory query approaches
-- name: Test Memory Queries
+# Test playbook for gNMI on device 198.51.100.1
+- name: Test gNMI Connection
   hosts: localhost
   gather_facts: false
 
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
-    device_host: "10.85.134.65"
+    device_host: "198.51.100.1"
     device_port: 9339
     device_username: "admin"
     device_password: "your-password-here"
 
   tasks:
-    - name: Try getting system state (might include memory)
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+    - name: Test 1 - Get system hostname
+      cisco.gnmi.gnmi:
+        host: "{{ device_host }}"
+        port: "{{ device_port }}"
+        username: "{{ device_username }}"
+        password: "{{ device_password }}"
+        operation: get
+        encoding: json_ietf
+        ca_cert: "/tmp/device_cert.pem"  # Use device's self-signed certificate
+        paths:
+          - /system/config/hostname
+      register: hostname_result
+      ignore_errors: true
+
+    - name: Display hostname result
+      debug:
+        var: hostname_result
+
+    - name: Test 2 - Get interface list
+      cisco.gnmi.gnmi:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
@@ -22,32 +40,13 @@
         encoding: json_ietf
         ca_cert: "/tmp/device_cert.pem"
         paths:
-          - /system/state
-        datatype: state
-      register: system_state
+          - /interfaces/interface
+        datatype: config
+      register: interfaces_result
       ignore_errors: true
+      when: hostname_result is succeeded
 
-    - name: Display system state
+    - name: Display interfaces
       debug:
-        var: system_state
-      when: system_state is succeeded
-
-    - name: Try components state
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
-        host: "{{ device_host }}"
-        port: "{{ device_port }}"
-        username: "{{ device_username }}"
-        password: "{{ device_password }}"
-        operation: get
-        encoding: json_ietf
-        ca_cert: "/tmp/device_cert.pem"
-        paths:
-          - /components
-        datatype: state
-      register: components
-      ignore_errors: true
-
-    - name: Display components (may include memory info)
-      debug:
-        msg: "{{ components.data | to_nice_json }}"
-      when: components is succeeded
+        var: interfaces_result.data
+      when: interfaces_result is succeeded

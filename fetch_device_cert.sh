@@ -1,6 +1,6 @@
 #!/bin/bash
 # fetch_device_certs.sh
-# Helper script to fetch SSL certificates from Cisco IOS XE devices
+# Helper script to fetch SSL certificates from network devices for gNMI
 # and store them for use with gNMI
 
 set -e
@@ -11,7 +11,7 @@ PORT="${PORT:-9339}"
 usage() {
     echo "Usage: $0 <device_ip> [device_name]"
     echo ""
-    echo "Fetch SSL certificate from a Cisco IOS XE device for gNMI"
+    echo "Fetch SSL certificate from a network device for gNMI"
     echo ""
     echo "Arguments:"
     echo "  device_ip    IP address or hostname of the device"
@@ -22,7 +22,7 @@ usage() {
     echo "  PORT         gNMI port (default: 9339)"
     echo ""
     echo "Example:"
-    echo "  $0 10.85.134.65 router1"
+    echo "  $0 198.51.100.1 router1"
     echo "  $0 192.168.1.1"
     exit 1
 }

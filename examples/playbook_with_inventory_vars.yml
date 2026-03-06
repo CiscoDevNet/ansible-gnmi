@@ -6,14 +6,14 @@
 # This demonstrates best practice: credentials and certificates defined once in inventory,
 # used across all tasks without repetition
 
-- name: Cisco IOS XE gNMI Operations with Inventory Variables
+- name: gNMI Operations with Inventory Variables
   hosts: iosxe_devices
   gather_facts: false
 
   tasks:
     # Example 1: Get hostname (OpenConfig model)
     - name: Get system hostname
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
@@ -32,7 +32,7 @@
 
     # Example 2: Get memory statistics (Cisco native model with origin)
     - name: Get memory statistics
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
@@ -56,7 +56,7 @@
 
     # Example 3: Get interface configuration
     - name: Get all interfaces
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
@@ -76,7 +76,7 @@
 
     # Example 4: Set interface description
     - name: Update interface description
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"

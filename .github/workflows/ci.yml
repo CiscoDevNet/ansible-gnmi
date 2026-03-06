@@ -1,0 +1,68 @@
+---
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  sanity:
+    name: Sanity (Ansible ${{ matrix.ansible }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ansible:
+          - stable-2.15
+          - stable-2.16
+          - stable-2.17
+          - stable-2.18
+          - devel
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ansible_collections/cisco/gnmi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install ansible-core (${{ matrix.ansible }})
+        run: pip install https://github.com/ansible/ansible/archive/${{ matrix.ansible }}.tar.gz
+
+      - name: Install collection dependencies
+        run: pip install grpcio grpcio-tools protobuf cryptography
+
+      - name: Run sanity tests
+        run: ansible-test sanity --docker default -v --color
+        working-directory: ansible_collections/cisco/gnmi
+
+  units:
+    name: Unit tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python:
+          - '3.9'
+          - '3.10'
+          - '3.11'
+          - '3.12'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ansible_collections/cisco/gnmi
+
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install dependencies
+        run: |
+          pip install ansible-core pytest pytest-cov
+          pip install grpcio grpcio-tools protobuf cryptography
+
+      - name: Run unit tests
+        run: pytest tests/unit/ -v --tb=short
+        working-directory: ansible_collections/cisco/gnmi

@@ -1,19 +1,19 @@
 ---
-# Test playbook for retrieving Cisco IOS XE memory statistics via gNMI
-- name: Get Memory Statistics from Cisco IOS XE
+# Test playbook for retrieving memory statistics via gNMI
+- name: Get Memory Statistics via gNMI
   hosts: localhost
   gather_facts: false
 
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
-    device_host: "10.85.134.65"
+    device_host: "198.51.100.1"
     device_port: 9339
     device_username: "admin"
     device_password: "your-password-here"
 
   tasks:
     - name: Get memory statistics
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"

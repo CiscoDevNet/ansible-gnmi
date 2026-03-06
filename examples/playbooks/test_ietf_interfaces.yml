@@ -1,4 +1,4 @@
----
+﻿---
 # GET operation - Retrieve IETF interfaces using RFC 7951 origin
 - name: Get IETF Interfaces via gNMI
   hosts: router2
@@ -6,7 +6,7 @@
 
   tasks:
     - name: Get IETF interfaces (RFC 7951 origin)
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"

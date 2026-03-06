@@ -408,7 +408,7 @@ show gnxi state
 
   tasks:
     - name: Get interface configuration
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ inventory_hostname }}"
         port: 9339                    # Secure port
         username: "{{ ansible_user }}"
@@ -425,7 +425,7 @@ show gnxi state
       register: interface_config
 
     - name: Update interface with proper namespace
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ inventory_hostname }}"
         port: 9339
         username: "{{ ansible_user }}"
@@ -443,7 +443,7 @@ show gnxi state
       register: set_result
 
     - name: Subscribe to interface statistics (PROTO allowed here)
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ inventory_hostname }}"
         port: 9339
         username: "{{ ansible_user }}"

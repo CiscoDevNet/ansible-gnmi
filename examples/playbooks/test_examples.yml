@@ -1,13 +1,13 @@
 ---
-# Comprehensive test playbook for Cisco IOS XE gNMI
+# Comprehensive test playbook for gNMI
 # Tests GET operations with both OpenConfig and Cisco native models
-- name: Cisco IOS XE gNMI Examples
+- name: gNMI Examples
   hosts: localhost
   gather_facts: false
 
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
-    device_host: "10.85.134.65"
+    device_host: "198.51.100.1"
     device_port: 9339
     device_username: "admin"
     device_password: "your-password-here"
@@ -15,7 +15,7 @@
 
   tasks:
     - name: "Test 1: Get system hostname (OpenConfig model)"
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
@@ -30,10 +30,10 @@
 
     - name: Display hostname
       debug:
-        msg: "✓ Hostname: {{ hostname_result.data['/system/config/hostname'] }}"
+        msg: "? Hostname: {{ hostname_result.data['/system/config/hostname'] }}"
 
     - name: "Test 2: Get memory statistics (Cisco native model with origin)"
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
@@ -50,13 +50,13 @@
     - name: Display memory summary
       debug:
         msg: |
-          ✓ Memory Statistics:
+          ? Memory Statistics:
           {% for key, pool in memory_result.data.items() %}
             - {{ pool.name }}: {{ ((pool['used-memory'] | int / pool['total-memory'] | int) * 100) | round(1) }}% used ({{ (pool['used-memory'] | int / 1048576) | round(0) }}MB / {{ (pool['total-memory'] | int / 1048576) | round(0) }}MB)
           {% endfor %}
 
     - name: "Test 3: Get specific interface configuration"
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
@@ -72,11 +72,11 @@
 
     - name: Display interface config
       debug:
-        msg: "✓ Interface GigabitEthernet1/0/1: {{ interface_result.data }}"
+        msg: "? Interface GigabitEthernet1/0/1: {{ interface_result.data }}"
       when: interface_result is succeeded
 
     - name: Try different interface name if first failed
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
@@ -92,11 +92,11 @@
 
     - name: Display VLAN config
       debug:
-        msg: "✓ VLAN 311 config: {{ vlan_result.data }}"
+        msg: "? VLAN 311 config: {{ vlan_result.data }}"
       when: vlan_result is succeeded
 
     - name: "Test 4: Get all interface names (summary)"
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
@@ -111,10 +111,10 @@
 
     - name: Display interface count
       debug:
-        msg: "✓ Total interfaces configured: {{ all_interfaces.data | length }}"
+        msg: "? Total interfaces configured: {{ all_interfaces.data | length }}"
 
     - name: "Test 5: Get system state information"
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
@@ -139,10 +139,10 @@
           - "=========================="
           - "gNMI Test Results:"
           - "=========================="
-          - "✓ Hostname retrieval: {{ 'PASSED' if hostname_result is succeeded else 'FAILED' }}"
-          - "✓ Memory statistics (native model): {{ 'PASSED' if memory_result is succeeded else 'FAILED' }}"
-          - "✓ Interface configuration: {{ 'PASSED' if (interface_result is succeeded or vlan_result is succeeded) else 'FAILED' }}"
-          - "✓ Interface listing: {{ 'PASSED' if all_interfaces is succeeded else 'FAILED' }}"
+          - "? Hostname retrieval: {{ 'PASSED' if hostname_result is succeeded else 'FAILED' }}"
+          - "? Memory statistics (native model): {{ 'PASSED' if memory_result is succeeded else 'FAILED' }}"
+          - "? Interface configuration: {{ 'PASSED' if (interface_result is succeeded or vlan_result is succeeded) else 'FAILED' }}"
+          - "? Interface listing: {{ 'PASSED' if all_interfaces is succeeded else 'FAILED' }}"
           - "=========================="
           - "All tests completed!"
           - "=========================="

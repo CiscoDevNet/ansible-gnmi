@@ -1,12 +1,12 @@
 ---
 # NTP configuration test playbook using OpenConfig model
-- name: Get NTP Configuration from Cisco IOS XE Devices
+- name: Get NTP Configuration via gNMI
   hosts: iosxe_devices
   gather_facts: false
 
   tasks:
     - name: Get NTP configuration (OpenConfig model)
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"

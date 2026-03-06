@@ -1,6 +1,11 @@
 ---
-requires_ansible: '>=2.12'
-python_dependencies:
-  - grpcio>=1.50.0
-  - protobuf>=4.21.0
-  - cryptography>=38.0.0
+requires_ansible: '>=2.15.0'
+plugin_routing:
+  modules:
+    cisco_iosxe_gnmi:
+      redirect: cisco.gnmi.gnmi
+      deprecation:
+        removal_version: "3.0.0"
+        warning_text: >-
+          cisco.gnmi.cisco_iosxe_gnmi has been renamed to cisco.gnmi.gnmi.
+          Please update your playbooks.

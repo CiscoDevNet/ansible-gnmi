@@ -1,4 +1,4 @@
----
+﻿---
 # SNMP IF-MIB retrieval via gNMI using RFC 7951 origin
 - name: Get SNMP IF-MIB data via gNMI
   hosts: router2
@@ -6,7 +6,7 @@
 
   tasks:
     - name: Get IF-MIB data (RFC 7951 origin)
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"

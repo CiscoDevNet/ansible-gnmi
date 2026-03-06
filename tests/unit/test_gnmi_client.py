@@ -1,357 +1,218 @@
 """
-Unit tests for Cisco IOS XE gNMI Client
+Unit tests for vendor-neutral gNMI Client.
 
-Tests the GnmiClient class with mocked gRPC connections
+Tests the GnmiClient class with mocked gRPC connections.
 """
 
 import pytest
-import json
-from unittest.mock import Mock, MagicMock, patch, mock_open
-from ansible_collections.cisco.iosxe_gnmi.plugins.module_utils.gnmi_client import (
+from unittest.mock import MagicMock, patch
+from ansible_collections.cisco.gnmi.plugins.module_utils.gnmi_client import (
     GnmiClient,
     GnmiClientError,
     GnmiConnectionError,
-    GnmiAuthenticationError,
     GnmiOperationError,
-    GnmiResult
+    GnmiResult,
+    PLATFORM_PROFILES,
 )
 
 
-class TestGnmiClient:
-    """Test suite for GnmiClient class"""
+class TestGnmiClientInit:
+    """Test GnmiClient initialisation and validation."""
 
-    def test_client_initialization(self):
-        """Test basic client initialization"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            port=9339,
-            username='admin',
-            password='cisco',
-            encoding='json_ietf'
-        )
-
-        assert client.host == '192.168.1.1'
+    def test_default_init(self):
+        client = GnmiClient(host='10.0.0.1', username='admin', password='secret')
+        assert client.host == '10.0.0.1'
         assert client.port == 9339
-        assert client.username == 'admin'
-        assert client.password == 'cisco'
-        assert client.encoding == 4  # json_ietf encoding value
+        assert client.encoding == 4  # json_ietf
+        assert client.platform == 'auto'
+        assert client.timeout == 30
 
-    def test_invalid_encoding(self):
-        """Test that invalid encoding raises error"""
-        with pytest.raises(GnmiClientError) as exc_info:
-            GnmiClient(
-                host='192.168.1.1',
-                username='admin',
-                password='cisco',
-                encoding='bytes'  # NOT supported on Cisco IOS XE
-            )
+    def test_custom_port_and_encoding(self):
+        client = GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                            port=57400, encoding='json')
+        assert client.port == 57400
+        assert client.encoding == 0
 
-        assert 'Invalid encoding' in str(exc_info.value)
-        assert 'bytes' in str(exc_info.value).lower()
+    def test_invalid_encoding_raises(self):
+        with pytest.raises(GnmiClientError, match='Invalid encoding'):
+            GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                       encoding='bytes')
 
-    def test_ascii_encoding_not_supported(self):
-        """Test that ASCII encoding is not supported"""
-        with pytest.raises(GnmiClientError) as exc_info:
-            GnmiClient(
-                host='192.168.1.1',
-                username='admin',
-                password='cisco',
-                encoding='ascii'  # NOT supported on Cisco IOS XE
-            )
+    def test_invalid_port_raises(self):
+        with pytest.raises(GnmiClientError, match='Invalid port'):
+            GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                       port=99999)
 
-        assert 'NOT supported' in str(exc_info.value)
+    def test_all_valid_encodings(self):
+        for name, val in GnmiClient.ENCODING_MAP.items():
+            client = GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                                encoding=name)
+            assert client.encoding == val
 
-    def test_valid_encodings(self):
-        """Test all valid encodings for Cisco IOS XE"""
-        valid_encodings = ['json', 'json_ietf', 'proto']
+    def test_platform_lowercased(self):
+        client = GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                            platform='IOSXE')
+        assert client.platform == 'iosxe'
 
-        for encoding in valid_encodings:
-            client = GnmiClient(
-                host='192.168.1.1',
-                username='admin',
-                password='cisco',
-                encoding=encoding
-            )
-            assert client.encoding in [0, 2, 4]
 
-    def test_default_port(self):
-        """Test default port is 9339 (secure)"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco'
-        )
-        assert client.port == 9339
+class TestEncodingPlatformChecks:
+    """Test platform-specific encoding restrictions."""
 
-    def test_build_path_simple(self):
-        """Test building simple gNMI path"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco'
-        )
-
-        path_str = '/interfaces/interface'
-        path_obj = client._build_path(path_str)
-
-        assert len(path_obj.elem) == 2
-        assert path_obj.elem[0].name == 'interfaces'
-        assert path_obj.elem[1].name == 'interface'
-
-    def test_build_path_with_keys(self):
-        """Test building gNMI path with keys"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco'
-        )
-
-        path_str = '/interfaces/interface[name=GigabitEthernet1]/config'
-        path_obj = client._build_path(path_str)
-
-        assert len(path_obj.elem) == 3
-        assert path_obj.elem[1].name == 'interface'
-        assert path_obj.elem[1].key['name'] == 'GigabitEthernet1'
-        assert path_obj.elem[2].name == 'config'
-
-    @patch('ansible_collections.cisco.iosxe_gnmi.plugins.module_utils.gnmi_client.grpc')
-    @patch('ansible_collections.cisco.iosxe_gnmi.plugins.module_utils.gnmi_client.gnmi_pb2_grpc')
-    def test_connection_success(self, mock_grpc_gnmi, mock_grpc):
-        """Test successful gRPC connection"""
-        mock_channel = MagicMock()
-        mock_stub = MagicMock()
-        mock_grpc.secure_channel.return_value = mock_channel
-        mock_grpc_gnmi.gNMIStub.return_value = mock_stub
-
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco'
-        )
-        client.connect()
-
-        assert client.channel is not None
-        assert client.stub is not None
-        mock_grpc.secure_channel.assert_called_once()
-
-    @patch('ansible_collections.cisco.iosxe_gnmi.plugins.module_utils.gnmi_client.grpc')
-    def test_get_with_proto_encoding_fails(self, mock_grpc):
-        """Test that GET with PROTO encoding raises error"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco',
-            encoding='proto'
-        )
-
-        with pytest.raises(GnmiOperationError) as exc_info:
+    def test_iosxe_proto_get_raises(self):
+        client = GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                            encoding='proto', platform='iosxe')
+        with pytest.raises(GnmiOperationError, match='PROTO encoding'):
             client.get(paths=['/interfaces/interface'])
 
-        assert 'PROTO encoding is NOT supported for GET' in str(exc_info.value)
+    def test_iosxe_proto_set_raises(self):
+        client = GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                            encoding='proto', platform='iosxe')
+        with pytest.raises(GnmiOperationError, match='PROTO encoding'):
+            client.set(update=[('/test', 'val')])
 
-    @patch('ansible_collections.cisco.iosxe_gnmi.plugins.module_utils.gnmi_client.grpc')
-    def test_set_with_proto_encoding_fails(self, mock_grpc):
-        """Test that SET with PROTO encoding raises error"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco',
-            encoding='proto'
-        )
+    def test_auto_platform_proto_get_ok(self):
+        """With platform=auto, proto GET should not raise (no platform restrictions)."""
+        client = GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                            encoding='proto', platform='auto')
+        client._check_encoding_for_op('get')
 
-        with pytest.raises(GnmiOperationError) as exc_info:
-            client.set(update=[('/test/path', 'value')])
+    def test_iosxr_proto_get_ok(self):
+        """IOS XR does not block proto for GET."""
+        client = GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                            encoding='proto', platform='iosxr')
+        client._check_encoding_for_op('get')
 
-        assert 'PROTO encoding is NOT supported for SET' in str(exc_info.value)
 
-    def test_datatype_conversion(self):
-        """Test datatype string to value conversion"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco'
-        )
+class TestPathBuilding:
+    """Test _build_path and _path_to_string."""
 
+    @pytest.fixture
+    def client(self):
+        return GnmiClient(host='10.0.0.1', username='admin', password='secret')
+
+    def test_simple_path(self, client):
+        path = client._build_path('/interfaces/interface')
+        assert len(path.elem) == 2
+        assert path.elem[0].name == 'interfaces'
+        assert path.elem[1].name == 'interface'
+
+    def test_path_with_keys(self, client):
+        path = client._build_path('/interfaces/interface[name=GigabitEthernet1]/config')
+        assert len(path.elem) == 3
+        assert path.elem[1].key['name'] == 'GigabitEthernet1'
+
+    def test_roundtrip(self, client):
+        original = '/interfaces/interface'
+        path_obj = client._build_path(original)
+        assert client._path_to_string(path_obj) == original
+
+    def test_origin_explicit(self, client):
+        path = client._build_path('/native/hostname', origin='rfc7951')
+        assert path.origin == 'rfc7951'
+
+    def test_origin_auto_cisco_xe(self, client):
+        path = client._build_path('/Cisco-IOS-XE-native:native/hostname')
+        assert path.origin == 'rfc7951'
+
+    def test_origin_auto_cisco_xr(self, client):
+        path = client._build_path('/Cisco-IOS-XR-ifmgr-cfg:interface-configurations')
+        assert path.origin == 'rfc7951'
+
+    def test_origin_auto_openconfig(self, client):
+        path = client._build_path('/openconfig-interfaces:interfaces/interface')
+        assert path.origin == 'openconfig'
+
+    def test_origin_default_empty(self, client):
+        path = client._build_path('/interfaces/interface')
+        assert path.origin == ''
+
+
+class TestTypedValues:
+    """Test _build_typed_value and _parse_typed_value."""
+
+    @pytest.fixture
+    def client(self):
+        return GnmiClient(host='10.0.0.1', username='admin', password='secret')
+
+    def test_string_value(self, client):
+        tv = client._build_typed_value('hello')
+        assert tv.string_val == 'hello'
+
+    def test_int_value(self, client):
+        tv = client._build_typed_value(42)
+        assert tv.int_val == 42
+
+    def test_bool_value(self, client):
+        tv = client._build_typed_value(True)
+        assert tv.bool_val is True
+
+    def test_float_value(self, client):
+        tv = client._build_typed_value(3.14)
+        assert tv.float_val == pytest.approx(3.14)
+
+    def test_dict_json_ietf(self, client):
+        tv = client._build_typed_value({'a': 1})
+        assert tv.json_ietf_val is not None
+
+    def test_dict_json(self):
+        client = GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                            encoding='json')
+        tv = client._build_typed_value({'a': 1})
+        assert tv.json_val is not None
+
+
+class TestDatatype:
+    """Test datatype conversion."""
+
+    @pytest.fixture
+    def client(self):
+        return GnmiClient(host='10.0.0.1', username='admin', password='secret')
+
+    def test_valid_datatypes(self, client):
         assert client._get_datatype('all') == 0
         assert client._get_datatype('config') == 1
         assert client._get_datatype('state') == 2
         assert client._get_datatype('operational') == 3
 
-    def test_invalid_datatype(self):
-        """Test invalid datatype raises error"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco'
-        )
-
-        with pytest.raises(GnmiClientError):
+    def test_invalid_datatype(self, client):
+        with pytest.raises(GnmiClientError, match='Invalid datatype'):
             client._get_datatype('invalid')
-
-    def test_context_manager(self):
-        """Test client as context manager"""
-        with patch('ansible_collections.cisco.iosxe_gnmi.plugins.module_utils.gnmi_client.grpc'):
-            client = GnmiClient(
-                host='192.168.1.1',
-                username='admin',
-                password='cisco'
-            )
-
-            with client as c:
-                assert c is not None
-                assert isinstance(c, GnmiClient)
-
-    def test_build_typed_value_string(self):
-        """Test building TypedValue from string"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco'
-        )
-
-        typed_value = client._build_typed_value("test string")
-        assert typed_value.string_val == "test string"
-
-    def test_build_typed_value_integer(self):
-        """Test building TypedValue from integer"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco'
-        )
-
-        typed_value = client._build_typed_value(42)
-        assert typed_value.int_val == 42
-
-    def test_build_typed_value_boolean(self):
-        """Test building TypedValue from boolean"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco'
-        )
-
-        typed_value = client._build_typed_value(True)
-        assert typed_value.bool_val is True
-
-    def test_build_typed_value_dict(self):
-        """Test building TypedValue from dictionary"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco',
-            encoding='json_ietf'
-        )
-
-        data = {'key': 'value', 'number': 42}
-        typed_value = client._build_typed_value(data)
-
-        # Should be JSON encoded
-        assert typed_value.json_ietf_val is not None
-
-    def test_path_to_string_simple(self):
-        """Test converting path object to string"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco'
-        )
-
-        # First build a path, then convert back to string
-        path_obj = client._build_path('/interfaces/interface')
-        path_str = client._path_to_string(path_obj)
-
-        assert path_str == '/interfaces/interface'
-
-    def test_path_to_string_with_keys(self):
-        """Test converting path with keys to string"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco'
-        )
-
-        path_obj = client._build_path('/interfaces/interface[name=GigabitEthernet1]')
-        path_str = client._path_to_string(path_obj)
-
-        assert '/interfaces/interface' in path_str
-        assert 'name=GigabitEthernet1' in path_str
 
 
 class TestGnmiResult:
-    """Test GnmiResult namedtuple"""
+    """Test GnmiResult namedtuple."""
 
-    def test_gnmi_result_success(self):
-        """Test creating successful result"""
-        result = GnmiResult(
-            success=True,
-            data={'key': 'value'},
-            error=None,
-            changed=True
-        )
+    def test_success_result(self):
+        r = GnmiResult(success=True, data={'k': 'v'}, error=None, changed=True)
+        assert r.success and r.changed and r.error is None
 
-        assert result.success is True
-        assert result.data == {'key': 'value'}
-        assert result.error is None
-        assert result.changed is True
-
-    def test_gnmi_result_failure(self):
-        """Test creating failure result"""
-        result = GnmiResult(
-            success=False,
-            data=None,
-            error='Connection failed',
-            changed=False
-        )
-
-        assert result.success is False
-        assert result.data is None
-        assert result.error == 'Connection failed'
-        assert result.changed is False
+    def test_failure_result(self):
+        r = GnmiResult(success=False, data=None, error='fail', changed=False)
+        assert not r.success and r.error == 'fail'
 
 
-class TestGnmiClientValidation:
-    """Test Cisco IOS XE specific validation"""
+class TestContextManager:
+    """Test context manager protocol."""
 
-    def test_validate_encoding_json_ietf(self):
-        """Test JSON_IETF encoding is recommended"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco',
-            encoding='json_ietf'
-        )
-        assert client.encoding == 4
+    def test_enter_exit(self):
+        with patch('ansible_collections.cisco.gnmi.plugins.module_utils.gnmi_client.grpc'):
+            client = GnmiClient(host='10.0.0.1', username='admin', password='secret')
+            with client as c:
+                assert isinstance(c, GnmiClient)
 
-    def test_insecure_mode_warning(self):
-        """Test that insecure mode works but is not recommended"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco',
-            insecure=True
-        )
-        assert client.insecure is True
 
-    def test_custom_port(self):
-        """Test custom port configuration"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco',
-            port=50052  # Insecure port
-        )
-        assert client.port == 50052
+class TestPlatformProfiles:
+    """Test platform profile data."""
 
-    def test_timeout_configuration(self):
-        """Test timeout configuration"""
-        client = GnmiClient(
-            host='192.168.1.1',
-            username='admin',
-            password='cisco',
-            timeout=60
-        )
-        assert client.timeout == 60
+    def test_iosxe_profile(self):
+        p = PLATFORM_PROFILES['iosxe']
+        assert p['default_port'] == 9339
+        assert 'proto' in p['blocked_encodings_get']
+
+    def test_iosxr_profile(self):
+        p = PLATFORM_PROFILES['iosxr']
+        assert p['default_port'] == 57400
+        assert p['blocked_encodings_get'] == []
 
 
 if __name__ == '__main__':

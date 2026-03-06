@@ -1,12 +1,12 @@
 ---
-# Multi-device test playbook for Cisco IOS XE gNMI
-- name: Test Multiple Cisco IOS XE Devices via gNMI
+# Multi-device test playbook for gNMI
+- name: Test Multiple Devices via gNMI
   hosts: iosxe_devices
   gather_facts: false
 
   tasks:
     - name: Get system hostname
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
@@ -20,10 +20,10 @@
 
     - name: Display hostname
       debug:
-        msg: "✓ {{ inventory_hostname }}: {{ hostname_result.data['/system/config/hostname'] }}"
+        msg: "? {{ inventory_hostname }}: {{ hostname_result.data['/system/config/hostname'] }}"
 
     - name: Get memory statistics (Cisco native model)
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
@@ -39,7 +39,7 @@
     - name: Display memory summary
       debug:
         msg: |
-          ✓ {{ inventory_hostname }} Memory:
+          ? {{ inventory_hostname }} Memory:
           {% for key, pool in memory_result.data.items() %}
           {% if pool.name == 'Processor' %}
             Processor: {{ ((pool['used-memory'] | int / pool['total-memory'] | int) * 100) | round(1) }}% used ({{ (pool['used-memory'] | int / 1048576) | round(0) }}MB / {{ (pool['total-memory'] | int / 1048576) | round(0) }}MB)
@@ -47,7 +47,7 @@
           {% endfor %}
 
     - name: Get interface count
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
@@ -62,7 +62,7 @@
 
     - name: Display interface summary
       debug:
-        msg: "✓ {{ inventory_hostname }}: {{ interfaces_result.data | length }} interfaces configured"
+        msg: "? {{ inventory_hostname }}: {{ interfaces_result.data | length }} interfaces configured"
 
 - name: Summary Report
   hosts: localhost

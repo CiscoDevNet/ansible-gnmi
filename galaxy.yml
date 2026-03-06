@@ -1,19 +1,19 @@
 ---
-namespace: jeremycohoe
-name: iosxe_gnmi
-version: 1.0.4
+namespace: cisco
+name: gnmi
+version: 2.0.0
 readme: README.md
 authors:
-  - John Cohoe <jcohoe@cisco.com>
+  - Jeremy Cohoe <jcohoe@cisco.com>
 description: >-
-  Ansible collection for Cisco IOS XE gNMI (gRPC Network Management Interface) operations.
-  Provides comprehensive support for GET and SET operations using OpenConfig,
-  Cisco Native YANG, IETF, and SNMP MIB models. Production-ready with TLS support,
-  multi-device management, and extensive examples.
+  Ansible collection for vendor-neutral gNMI (gRPC Network Management Interface) operations.
+  Supports GET, SET, and Subscribe RPCs on any gNMI-capable device including
+  Cisco IOS XE, IOS XR, NX-OS, Nokia SR OS, Arista EOS, and Juniper Junos.
+  Production-ready with TLS support, check/diff mode, configuration backup,
+  and multi-device management.
 license_file: LICENSE
 tags:
   - cisco
-  - iosxe
   - gnmi
   - grpc
   - networking
@@ -21,7 +21,7 @@ tags:
   - openconfig
   - telemetry
   - automation
-  - catalyst
+  - network
 dependencies: {}
 repository: https://github.com/jeremycohoe/ansible-gnmi
 documentation: https://github.com/jeremycohoe/ansible-gnmi/blob/main/README.md
@@ -30,11 +30,32 @@ issues: https://github.com/jeremycohoe/ansible-gnmi/issues
 build_ignore:
   - '*.tar.gz'
   - .git
+  - .github
   - .gitignore
   - __pycache__
   - '*.pyc'
   - .vscode
   - venv
   - .pytest_cache
+  - tests
+  - test_*.yml
+  - test_*.ini
+  - test_inventory.ini
+  - pytest.ini
+  - requirements.txt
+  - fix_quotes.py
+  - validate_collection.py
+  - install.sh
+  - verify.sh
+  - Makefile
+  - fetch_device_cert.sh
+  - host_vars
+  - CONTRIBUTING.md
+  - CODE_REVIEW.md
+  - DEMO_SUMMARY.md
+  - PROJECT_SUMMARY.md
+  - CERTIFICATES_AND_CREDENTIALS.md
+  - CISCO_GNMI_CAVEATS.md
+  - PLAYBOOK_DOCS.md
   - htmlcov
   - .coverage

@@ -1,9 +1,9 @@
 ---
 # group_vars/iosxe_devices.yml
-# Common variables for all Cisco IOS XE devices
+# Common variables for all gNMI-capable devices
 #
-# This file is automatically loaded when you target the 'iosxe_devices' group
-# Best practice: Store credentials, certificates, and connection settings here
+# This file is automatically loaded when you target the 'iosxe_devices' group.
+# Best practice: Store credentials, certificates, and connection settings here.
 
 # gNMI Connection Settings
 gnmi_port: 9339
@@ -13,11 +13,11 @@ gnmi_encoding: json_ietf
 # Authentication
 gnmi_username: admin
 # Password should be encrypted with ansible-vault:
-# ansible-vault encrypt_string 'your_password' --name 'gnmi_password'
+# ansible-vault encrypt_string 'YOUR_PASSWORD_HERE' --name 'gnmi_password'
 gnmi_password: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           # This is a placeholder - replace with actual vaulted password
-          # Run: ansible-vault encrypt_string 'EN-TME-Cisco123' --name 'gnmi_password'
+          # Run: ansible-vault encrypt_string 'YOUR_PASSWORD_HERE' --name 'gnmi_password'
 
 # TLS/SSL Certificate Settings
 # Option 1: Use a common CA certificate for all devices

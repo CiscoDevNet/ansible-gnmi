@@ -1,12 +1,12 @@
 ---
-# Example playbook demonstrating GET operations with Cisco IOS XE gNMI
+# Example playbook demonstrating GET operations with gNMI
 #
 # Prerequisites:
 # - gNMI must be enabled on the target device
 # - Python dependencies installed (see requirements.txt)
 # - Valid credentials for the device
 
-- name: Cisco IOS XE gNMI GET Operations Examples
+- name: gNMI GET Operations Examples
   hosts: iosxe_devices
   gather_facts: false
 
@@ -19,7 +19,7 @@
   tasks:
     # Basic GET operation - retrieve all interface configurations
     - name: Get all interface configurations
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
@@ -37,7 +37,7 @@
 
     # Get specific interface configuration
     - name: Get GigabitEthernet1 configuration
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -53,7 +53,7 @@
 
     # Get operational state (statistics)
     - name: Get interface operational state
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -69,7 +69,7 @@
 
     # Get multiple paths in single operation
     - name: Get multiple configurations
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -87,7 +87,7 @@
 
     # Get system configuration
     - name: Get system hostname
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -103,7 +103,7 @@
 
     # Get all data (config + state)
     - name: Get complete interface data
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -119,7 +119,7 @@
 
     # Get with TLS certificate validation
     - name: Get configuration with TLS certificates
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -134,7 +134,7 @@
 
     # Get with different encoding (JSON instead of JSON_IETF)
     - name: Get with JSON encoding
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -151,7 +151,7 @@
 
     # Get Cisco native YANG model data (requires origin parameter)
     - name: Get memory statistics (Cisco native model)
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
@@ -176,7 +176,7 @@
 
     # Save retrieved data to file
     - name: Get full configuration and save to file
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"

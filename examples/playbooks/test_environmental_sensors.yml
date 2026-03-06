@@ -1,12 +1,12 @@
 ---
-# Environmental sensors test playbook for multiple Cisco IOS XE devices
-- name: Get Environmental Sensor Data from Cisco IOS XE Devices
+# Environmental sensors test playbook for multiple devices
+- name: Get Environmental Sensor Data via gNMI
   hosts: iosxe_devices
   gather_facts: false
 
   tasks:
     - name: Get environmental sensors data
-      cisco.iosxe_gnmi.cisco_iosxe_gnmi:
+      cisco.gnmi.gnmi:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"

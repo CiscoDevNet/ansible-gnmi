@@ -98,7 +98,8 @@ pip install -r requirements.txt
     subscribe_mode: once
     subscriptions:
       - path: /interfaces/interface[name=GigabitEthernet1]/state/counters
-        mode: target_defined
+        mode: sample
+        sample_interval: 10
 ```
 
 ### Platform hint (Cisco IOS XE)
@@ -115,6 +116,25 @@ pip install -r requirements.txt
     paths:
       - /Cisco-IOS-XE-native:native/hostname
     origin: rfc7951
+```
+
+### IOS XE Subscribe (stream mode, on_change)
+
+```yaml
+- name: Stream on-change interface updates from IOS XE
+  cisco.gnmi.gnmi:
+    host: "{{ inventory_hostname }}"
+    port: 9339
+    username: "{{ gnmi_user }}"
+    password: "{{ gnmi_password }}"
+    platform: iosxe
+    operation: subscribe
+    subscribe_mode: stream
+    subscribe_duration: 120
+    subscriptions:
+      - path: /interfaces/interface/state/oper-status
+        mode: on_change
+  register: oper_updates
 ```
 
 ## Module Parameters
@@ -147,17 +167,17 @@ pip install -r requirements.txt
 
 ## Platform Profiles
 
-When `platform` is set to a known value, encoding and port restrictions are
+When `platform` is set to a known value, encoding, port, and subscribe restrictions are
 enforced automatically:
 
-| Platform | Default Port | Blocked Encodings (GET/SET) | Notes |
-|---|---|---|---|
-| `auto` | 9339 | *none* | No restrictions |
-| `iosxe` | 9339 | `proto` | PROTO only works with Subscribe |
-| `iosxr` | 57400 | *none* | |
-| `nxos` | 50051 | *none* | |
-| `nokia_sros` | 57400 | *none* | |
-| `arista_eos` | 6030 | *none* | |
+| Platform | Secure Port | Insecure Port | Blocked Encodings (GET/SET) | Subscribe Restrictions | Notes |
+|---|---|---|---|---|---|
+| `auto` | 9339 | — | *none* | *none* | No restrictions |
+| `iosxe` | 9339 | 50052 | `proto` | List mode: only `stream`; Sub mode: only `on_change`, `sample` | gNMI 0.4.0; PROTO only with Subscribe; atomic SET (all-or-nothing) |
+| `iosxr` | 57400 | — | *none* | *none* | |
+| `nxos` | 50051 | — | *none* | *none* | |
+| `nokia_sros` | 57400 | — | *none* | *none* | |
+| `arista_eos` | 6030 | — | *none* | *none* | |
 
 ## Development
 

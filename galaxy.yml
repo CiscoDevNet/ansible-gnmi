@@ -59,3 +59,4 @@ build_ignore:
   - PLAYBOOK_DOCS.md
   - htmlcov
   - .coverage
+  - '*.pdf'

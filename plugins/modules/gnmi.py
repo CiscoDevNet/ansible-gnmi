@@ -31,6 +31,20 @@ notes:
   - Diff mode shows configuration differences before and after changes.
   - "JSON_IETF encoding is recommended for most network devices."
   - "PROTO encoding may not be supported by all platforms for all RPCs."
+  - >-
+    B(Cisco IOS XE specifics) (IOS XE 17.18, gNMI 0.4.0):
+    PROTO encoding is only supported for Subscribe RPC, not GET or SET.
+    The only supported SubscriptionList mode is B(stream); C(once) may work
+    on IOS XE 17.14.1+ (sync_response support) but is not officially documented;
+    C(poll) is not supported.
+    The only supported per-subscription modes are B(on_change) and B(sample);
+    C(target_defined) is not supported.
+    ON_CHANGE subscriptions require IOS XE 17.14.1 or later.
+    SetRequest operations are atomic (all-or-nothing rollback) and configuration
+    changes via gNMI persist across reboots automatically (from IOS XE 17.3.1).
+    The default insecure (non-TLS) port is B(50052); the default secure port is B(9339).
+    Supported I(origin) values are C(rfc7951), C(openconfig), empty (same as openconfig),
+    and C(legacy) (pre-16.10.1).
   - See U(https://github.com/openconfig/reference/blob/master/rpc/gnmi/gnmi-specification.md)
 requirements:
   - grpcio >= 1.50.0
@@ -45,7 +59,12 @@ options:
   port:
     description:
       - gNMI port number.
-      - Common defaults vary by platform (IOS XE 9339, IOS XR 57400, NX-OS 50051).
+      - Common secure-port defaults vary by platform (IOS XE 9339, IOS XR 57400,
+        NX-OS 50051).
+      - >-
+        On Cisco IOS XE the default B(insecure) port is B(50052) (configured
+        with C(gnxi port)), while the default B(secure) port is B(9339)
+        (configured with C(gnxi secure-port)).
     default: 9339
     type: int
   username:
@@ -70,6 +89,9 @@ options:
       - List of gNMI paths for the operation.
       - Required for GET and Subscribe operations.
       - For SET with I(state=absent), these are the paths to delete.
+      - >-
+        GET paths on IOS XE support wildcards: implicit (omit key value),
+        explicit (C(*)), and ellipsis (C(...)).
     type: list
     elements: str
   datatype:
@@ -163,7 +185,13 @@ options:
         type: str
         required: true
       mode:
-        description: Subscription mode.
+        description:
+          - Subscription mode.
+          - >-
+            On Cisco IOS XE only B(on_change) and B(sample) are supported;
+            C(target_defined) is not supported and a warning will be emitted
+            when I(platform=iosxe).
+          - C(on_change) requires IOS XE 17.14.1 or later.
         type: str
         choices: ['target_defined', 'sample', 'on_change']
         default: 'target_defined'
@@ -174,6 +202,11 @@ options:
   subscribe_mode:
     description:
       - Mode for Subscribe operation.
+      - >-
+        On Cisco IOS XE only B(stream) is officially supported.
+        C(once) may work on IOS XE 17.14.1+ (requires sync_response support).
+        C(poll) is not supported on IOS XE and will be rejected when
+        I(platform=iosxe).
     choices: ['stream', 'once', 'poll']
     default: 'once'
     type: str
@@ -189,6 +222,10 @@ options:
       - Use C(rfc7951) for vendor-native YANG models.
       - Use C(openconfig) for OpenConfig models.
       - Leave empty to auto-detect from path prefixes.
+      - >-
+        IOS XE supported origins: C(rfc7951) (uses YANG module name as prefix),
+        C(openconfig) (OpenConfig models, no prefixes), empty string (same as
+        openconfig), and C(legacy) (uses YANG module prefix, pre-16.10.1).
     type: str
 '''
 
@@ -296,8 +333,25 @@ EXAMPLES = r'''
     subscribe_mode: once
     subscriptions:
       - path: /interfaces/interface[name=GigabitEthernet1]/state/counters
-        mode: target_defined
+        mode: sample
+        sample_interval: 10
   register: counters
+
+# Cisco IOS XE stream subscribe (on_change)
+- name: Stream on-change interface oper-status from IOS XE
+  cisco.gnmi.gnmi:
+    host: "{{ inventory_hostname }}"
+    port: 9339
+    username: "{{ gnmi_user }}"
+    password: "{{ gnmi_password }}"
+    platform: iosxe
+    operation: subscribe
+    subscribe_mode: stream
+    subscribe_duration: 120
+    subscriptions:
+      - path: /interfaces/interface/state/oper-status
+        mode: on_change
+  register: oper_updates
 
 # Cisco IOS XE with platform hint (enforces encoding restrictions)
 - name: Get config from IOS XE device

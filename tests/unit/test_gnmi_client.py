@@ -209,10 +209,116 @@ class TestPlatformProfiles:
         assert p['default_port'] == 9339
         assert 'proto' in p['blocked_encodings_get']
 
+    def test_iosxe_insecure_port(self):
+        p = PLATFORM_PROFILES['iosxe']
+        assert p['insecure_port'] == 50052
+
+    def test_iosxe_subscribe_list_modes(self):
+        p = PLATFORM_PROFILES['iosxe']
+        assert p['subscribe_list_modes'] == ['stream']
+
+    def test_iosxe_subscribe_modes(self):
+        p = PLATFORM_PROFILES['iosxe']
+        assert p['subscribe_modes'] == ['on_change', 'sample']
+
+    def test_iosxe_gnmi_version(self):
+        p = PLATFORM_PROFILES['iosxe']
+        assert p['gnmi_version'] == '0.4.0'
+
     def test_iosxr_profile(self):
         p = PLATFORM_PROFILES['iosxr']
         assert p['default_port'] == 57400
         assert p['blocked_encodings_get'] == []
+
+    def test_all_profiles_have_subscribe_keys(self):
+        for name, p in PLATFORM_PROFILES.items():
+            assert 'subscribe_list_modes' in p, "{0} missing subscribe_list_modes".format(name)
+            assert 'subscribe_modes' in p, "{0} missing subscribe_modes".format(name)
+
+
+class TestSubscribeRestrictions:
+    """Test subscribe platform restriction validation."""
+
+    def test_iosxe_poll_subscribe_raises(self):
+        warnings = []
+        client = GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                            platform='iosxe', warn_callback=warnings.append)
+        subscriptions = [('/interfaces', 'sample', 10)]
+        with pytest.raises(GnmiOperationError, match='poll.*not supported'):
+            client._check_subscribe_restrictions('poll', subscriptions)
+
+    def test_iosxe_once_subscribe_warns(self):
+        warnings = []
+        client = GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                            platform='iosxe', warn_callback=warnings.append)
+        subscriptions = [('/interfaces', 'sample', 10)]
+        client._check_subscribe_restrictions('once', subscriptions)
+        assert len(warnings) == 1
+        assert 'once' in warnings[0].lower()
+
+    def test_iosxe_stream_subscribe_ok(self):
+        warnings = []
+        client = GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                            platform='iosxe', warn_callback=warnings.append)
+        subscriptions = [('/interfaces', 'sample', 10)]
+        client._check_subscribe_restrictions('stream', subscriptions)
+        assert len(warnings) == 0
+
+    def test_iosxe_target_defined_warns(self):
+        warnings = []
+        client = GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                            platform='iosxe', warn_callback=warnings.append)
+        subscriptions = [('/interfaces', 'target_defined', 0)]
+        client._check_subscribe_restrictions('stream', subscriptions)
+        assert len(warnings) == 1
+        assert 'target_defined' in warnings[0]
+
+    def test_iosxe_on_change_ok(self):
+        warnings = []
+        client = GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                            platform='iosxe', warn_callback=warnings.append)
+        subscriptions = [('/interfaces', 'on_change', 0)]
+        client._check_subscribe_restrictions('stream', subscriptions)
+        assert len(warnings) == 0
+
+    def test_iosxe_sample_ok(self):
+        warnings = []
+        client = GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                            platform='iosxe', warn_callback=warnings.append)
+        subscriptions = [('/interfaces', 'sample', 10)]
+        client._check_subscribe_restrictions('stream', subscriptions)
+        assert len(warnings) == 0
+
+    def test_auto_platform_no_restrictions(self):
+        warnings = []
+        client = GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                            platform='auto', warn_callback=warnings.append)
+        subscriptions = [('/interfaces', 'target_defined', 0)]
+        client._check_subscribe_restrictions('poll', subscriptions)
+        assert len(warnings) == 0
+
+    def test_iosxe_multiple_subscriptions_mixed(self):
+        """Multiple subscriptions with one unsupported mode should warn once."""
+        warnings = []
+        client = GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                            platform='iosxe', warn_callback=warnings.append)
+        subscriptions = [
+            ('/interfaces', 'sample', 10),
+            ('/system', 'target_defined', 0),
+            ('/bgp', 'on_change', 0),
+        ]
+        client._check_subscribe_restrictions('stream', subscriptions)
+        assert len(warnings) == 1
+        assert 'target_defined' in warnings[0]
+
+    def test_iosxe_insecure_port_hint_in_warning(self):
+        """When port 9339 + insecure, warning includes insecure port hint."""
+        warnings = []
+        client = GnmiClient(host='10.0.0.1', username='admin', password='secret',
+                            platform='iosxe', port=9339, insecure=True,
+                            warn_callback=warnings.append)
+        assert len(warnings) == 1
+        assert '50052' in warnings[0]
 
 
 if __name__ == '__main__':

@@ -45,6 +45,9 @@ tests/output/
 # Collection tarballs
 *.tar.gz
 
+# PDF documentation (large binary files)
+*.pdf
+
 # Sensitive files
 *token*
 *secret*

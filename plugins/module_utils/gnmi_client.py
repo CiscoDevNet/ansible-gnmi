@@ -126,16 +126,28 @@ GnmiResult = namedtuple('GnmiResult', ['success', 'data', 'error', 'changed'])
 PLATFORM_PROFILES = {
     'iosxe': {
         'default_port': 9339,
+        'insecure_port': 50052,
         'recommended_encoding': 'json_ietf',
         'blocked_encodings_get': ['proto'],
         'blocked_encodings_set': ['proto'],
-        'notes': 'PROTO encoding only works with Subscribe RPC on Cisco IOS XE.',
+        # IOS XE only supports STREAM for the SubscriptionList mode.
+        'subscribe_list_modes': ['stream'],
+        # IOS XE only supports ON_CHANGE and SAMPLE (not TARGET_DEFINED).
+        'subscribe_modes': ['on_change', 'sample'],
+        'gnmi_version': '0.4.0',
+        'notes': 'PROTO encoding only works with Subscribe RPC on Cisco IOS XE. '
+                 'SetRequest operations are atomic (all-or-nothing rollback). '
+                 'Configuration changes via gNMI SetRequest persist across reboots '
+                 '(from IOS XE 17.3.1). '
+                 'sync_response support requires IOS XE 17.14.1 or later.',
     },
     'iosxr': {
         'default_port': 57400,
         'recommended_encoding': 'json_ietf',
         'blocked_encodings_get': [],
         'blocked_encodings_set': [],
+        'subscribe_list_modes': [],
+        'subscribe_modes': [],
         'notes': '',
     },
     'nxos': {
@@ -143,6 +155,8 @@ PLATFORM_PROFILES = {
         'recommended_encoding': 'json_ietf',
         'blocked_encodings_get': [],
         'blocked_encodings_set': [],
+        'subscribe_list_modes': [],
+        'subscribe_modes': [],
         'notes': '',
     },
     'nokia_sros': {
@@ -150,6 +164,8 @@ PLATFORM_PROFILES = {
         'recommended_encoding': 'json_ietf',
         'blocked_encodings_get': [],
         'blocked_encodings_set': [],
+        'subscribe_list_modes': [],
+        'subscribe_modes': [],
         'notes': '',
     },
     'arista_eos': {
@@ -157,6 +173,8 @@ PLATFORM_PROFILES = {
         'recommended_encoding': 'json',
         'blocked_encodings_get': [],
         'blocked_encodings_set': [],
+        'subscribe_list_modes': [],
+        'subscribe_modes': [],
         'notes': '',
     },
 }
@@ -256,10 +274,15 @@ class GnmiClient:
         profile = PLATFORM_PROFILES.get(self.platform)
         if profile:
             if self.port == profile['default_port'] and self.insecure:
+                insecure_port = profile.get('insecure_port')
+                hint = ''
+                if insecure_port:
+                    hint = '  The default insecure port for {0} is {1}.'.format(
+                        self.platform, insecure_port)
                 self._warn(
                     "Port {0} is the default *secure* port for {1}; "
-                    "using insecure=true may be unintentional.".format(
-                        self.port, self.platform))
+                    "using insecure=true may be unintentional.{2}".format(
+                        self.port, self.platform, hint))
 
     def _resolve_encoding(self, encoding):
         """Convert encoding string to gNMI numeric value."""
@@ -294,6 +317,51 @@ class GnmiClient:
                     notes=profile.get('notes', '')))
             # When platform is explicitly set, raise
             raise GnmiOperationError(msg)
+
+    def _check_subscribe_restrictions(self, mode, subscriptions):
+        """
+        Warn or raise when subscribe parameters violate platform restrictions.
+
+        IOS XE only supports STREAM as the SubscriptionList mode and only
+        ON_CHANGE and SAMPLE as the per-subscription SubscriptionMode.
+
+        Args:
+            mode: SubscriptionList mode string (``stream``, ``once``, ``poll``).
+            subscriptions: List of ``(path, sub_mode, sample_interval)`` tuples.
+        """
+        profile = PLATFORM_PROFILES.get(self.platform)
+        if not profile:
+            return  # no restrictions for 'auto' / unknown platforms
+
+        # --- SubscriptionList mode ----------------------------------
+        allowed_list_modes = profile.get('subscribe_list_modes', [])
+        if allowed_list_modes and mode.lower() not in allowed_list_modes:
+            msg = (
+                "Subscribe list mode '{mode}' is not supported on {plat}.  "
+                "Supported modes: {allowed}.  {notes}".format(
+                    mode=mode, plat=self.platform,
+                    allowed=', '.join(allowed_list_modes),
+                    notes=profile.get('notes', '')))
+            # poll is definitively unsupported; once may work on 17.14.1+
+            if mode.lower() == 'poll':
+                raise GnmiOperationError(msg)
+            else:
+                self._warn(msg)
+
+        # --- Per-subscription mode -----------------------------------
+        allowed_sub_modes = profile.get('subscribe_modes', [])
+        if allowed_sub_modes:
+            for path, sub_mode, _interval in subscriptions:
+                if sub_mode.lower() not in allowed_sub_modes:
+                    msg = (
+                        "Subscription mode '{sub_mode}' for path '{path}' "
+                        "is not supported on {plat}.  "
+                        "Supported modes: {allowed}.  "
+                        "Defaulting may cause unexpected behaviour.".format(
+                            sub_mode=sub_mode, path=path,
+                            plat=self.platform,
+                            allowed=', '.join(allowed_sub_modes)))
+                    self._warn(msg)
 
     def _get_datatype(self, datatype):
         """Convert datatype string to gNMI numeric value."""
@@ -657,6 +725,8 @@ class GnmiClient:
         """
         if not self.stub:
             self.connect()
+
+        self._check_subscribe_restrictions(mode, subscriptions)
 
         try:
             sub_list = []

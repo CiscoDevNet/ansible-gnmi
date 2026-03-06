@@ -5,6 +5,33 @@ All notable changes to this collection will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this collection adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2025-03-06
+
+### Fixed
+- **SNMP MIB test playbook** – corrected gNMI path from `/IF-MIB:IF-MIB` to
+  `/IF-MIB:IF-MIB/ifTable`, added explicit `encoding: json_ietf` and
+  increased timeout to 60 seconds.
+- **`subscribe_duration` parameter** – was declared in `argument_spec` but
+  never passed to the client; now wired through as the gRPC deadline for
+  Subscribe RPCs.
+- **`pytest.ini`** – changed `[tool:pytest]` header to `[pytest]` so pytest
+  discovers configuration correctly; extracted coverage settings to
+  `.coveragerc`.
+- **`tests/requirements.txt`** – comment lines were missing `#` prefix,
+  causing pip parse errors.
+- **Missing `plugins/modules/__init__.py`** – added empty init file for
+  proper Python package recognition.
+- **`.gitignore` overly broad patterns** – `*token*`, `*secret*`,
+  `*password*` replaced with specific file-extension patterns to avoid
+  accidentally ignoring legitimate source files.
+
+### Changed
+- **`galaxy.yml`** – bumped version to 2.0.1; added explicit
+  `license: [Apache-2.0]`; removed `requirements.txt` from `build_ignore`
+  so `meta/execution-environment.yml` can reference it in built artifacts.
+- **`test_inventory.ini`** – added `[iosxe_devices:children]` group (four
+  playbooks target `hosts: iosxe_devices`) and set `gnmi_platform=iosxe`.
+
 ## [2.0.0] - 2025-01-29
 
 ### Breaking Changes

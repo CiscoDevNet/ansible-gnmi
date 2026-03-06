@@ -1,28 +1,28 @@
-  Test requirements for Cisco IOS XE gNMI Ansible Collection
+# Test requirements for Cisco IOS XE gNMI Ansible Collection
 
-  Base requirements
+# Base requirements
 -r ../requirements.txt
 
-  Testing frameworks
+# Testing frameworks
 pytest>=7.0.0
 pytest-cov>=4.0.0
 pytest-mock>=3.10.0
 pytest-asyncio>=0.20.0
 
-  Code quality
+# Code quality
 pylint>=2.15.0
 flake8>=5.0.0
 black>=22.10.0
 
-  Ansible testing
+# Ansible testing
 ansible-lint>=6.0.0
 molecule>=4.0.0
 molecule-plugins[docker]>=23.0.0
 
-  Mock and fixtures
+# Mock and fixtures
 mock>=4.0.3
 responses>=0.22.0
 
-  Documentation
+# Documentation
 sphinx>=5.3.0
 sphinx-rtd-theme>=1.1.0

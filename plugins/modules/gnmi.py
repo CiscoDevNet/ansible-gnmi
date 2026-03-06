@@ -616,6 +616,7 @@ class GnmiModule:
 
         origin = self.module.params.get('origin')
         subscribe_mode = self.module.params.get('subscribe_mode', 'once')
+        subscribe_duration = self.module.params.get('subscribe_duration', 60)
 
         subscription_tuples = []
         for sub in subscriptions_param:
@@ -628,6 +629,7 @@ class GnmiModule:
             subscriptions=subscription_tuples,
             mode=subscribe_mode,
             origin=origin,
+            duration=subscribe_duration,
         )
 
         if result.success:

@@ -707,7 +707,7 @@ class GnmiClient:
     # ------------------------------------------------------------------
 
     def subscribe(self, subscriptions, mode='stream', encoding=None,
-                  origin=None, callback=None):
+                  origin=None, callback=None, duration=None):
         """
         Execute a gNMI Subscribe RPC.
 
@@ -719,6 +719,9 @@ class GnmiClient:
             encoding: Override the client-level encoding.
             origin: Origin to set on every path.
             callback: Optional callable invoked for each notification update.
+            duration: Maximum duration in seconds for stream subscriptions.
+                      Defaults to ``None`` (no timeout for ``once``/``poll``,
+                      uses value as gRPC deadline for ``stream``).
 
         Returns:
             `GnmiResult`
@@ -745,8 +748,14 @@ class GnmiClient:
             )
 
             request = gnmi_pb2.SubscribeRequest(subscribe=subscription_list)
+
+            # Use duration as the gRPC deadline for stream subscriptions.
+            # For 'once' and 'poll' modes the server signals completion, so
+            # a deadline is not strictly necessary but still honoured if set.
+            timeout = duration if duration else None
+
             responses = self.stub.Subscribe(
-                iter([request]), metadata=self._metadata, timeout=None)
+                iter([request]), metadata=self._metadata, timeout=timeout)
 
             updates = []
             for response in responses:

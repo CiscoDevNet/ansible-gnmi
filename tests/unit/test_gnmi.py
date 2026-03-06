@@ -10,7 +10,12 @@ from unittest.mock import MagicMock, patch
 
 @pytest.fixture
 def mock_module():
-    """Fixture to create a mock AnsibleModule."""
+    """Fixture to create a mock AnsibleModule.
+
+    ``fail_json`` is configured to raise ``SystemExit`` (like the real
+    ``AnsibleModule``) so that test assertions using ``pytest.raises``
+    work correctly.
+    """
     mock = MagicMock()
     mock.params = {
         'host': '10.0.0.1',
@@ -39,6 +44,8 @@ def mock_module():
     }
     mock.check_mode = False
     mock._diff = False
+    # Real AnsibleModule.fail_json raises SystemExit after printing JSON.
+    mock.fail_json.side_effect = SystemExit(1)
     return mock
 
 

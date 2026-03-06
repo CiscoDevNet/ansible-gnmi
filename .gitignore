@@ -49,10 +49,10 @@ tests/output/
 *.pdf
 
 # Sensitive files
-*token*
-*secret*
-*password*
 .env
+.env.*
+*.token
+*.secret
 
 # Credentials
 host_vars/*/vault.yml

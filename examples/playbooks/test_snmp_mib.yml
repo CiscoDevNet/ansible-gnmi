@@ -5,22 +5,23 @@
   gather_facts: false
 
   tasks:
-    - name: Get IF-MIB data (RFC 7951 origin)
+    - name: Get IF-MIB ifTable data (RFC 7951 origin)
       cisco.gnmi.gnmi:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
         ca_cert: "{{ gnmi_ca_cert }}"
+        timeout: 60
         operation: get
-        encoding: "{{ gnmi_encoding }}"
+        encoding: json_ietf
         origin: rfc7951
         paths:
-          - /IF-MIB:IF-MIB
+          - /IF-MIB:IF-MIB/ifTable
         datatype: state
       register: if_mib_result
 
-    - name: Display IF-MIB data
+    - name: Display IF-MIB ifTable data
       debug:
         var: if_mib_result.data
 
@@ -30,5 +31,5 @@
           ========================================
           IF-MIB Interface Table
           ========================================
-          {{ if_mib_result.data['/IF-MIB:IF-MIB'] | to_nice_yaml }}
+          {{ if_mib_result.data | to_nice_yaml }}
       when: if_mib_result.data is defined

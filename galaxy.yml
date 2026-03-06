@@ -1,7 +1,7 @@
 ---
 namespace: cisco
 name: gnmi
-version: 2.0.0
+version: 2.0.1
 readme: README.md
 authors:
   - Jeremy Cohoe <jcohoe@cisco.com>
@@ -12,6 +12,8 @@ description: >-
   Production-ready with TLS support, check/diff mode, configuration backup,
   and multi-device management.
 license_file: LICENSE
+license:
+  - Apache-2.0
 tags:
   - cisco
   - gnmi
@@ -32,6 +34,7 @@ build_ignore:
   - .git
   - .github
   - .gitignore
+  - .coveragerc
   - __pycache__
   - '*.pyc'
   - .vscode
@@ -42,7 +45,6 @@ build_ignore:
   - test_*.ini
   - test_inventory.ini
   - pytest.ini
-  - requirements.txt
   - fix_quotes.py
   - validate_collection.py
   - install.sh

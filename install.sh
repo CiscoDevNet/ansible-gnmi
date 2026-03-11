@@ -1,4 +1,8 @@
 #!/bin/bash
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# SPDX-License-Identifier: Apache-2.0
+
 # Installation script for cisco.gnmi Ansible Collection
 
 set -e

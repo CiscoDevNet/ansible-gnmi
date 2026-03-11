@@ -1,0 +1,26 @@
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# SPDX-License-Identifier: Apache-2.0
+
+---
+name: Publish to Ansible Galaxy
+
+on:
+  release:
+    types: ['created']
+
+jobs:
+  publish:
+    name: Publish Collection to Galaxy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b # v4.1.5
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Publish Collection to Galaxy-NG
+        uses: ansible/ansible-publish-action@a56a0328c92c1d4feedf5bd7f7cf7ec7a4ae3f09 # v1.0.0
+        with:
+          api_key: "${{ secrets.GALAXY_API_KEY }}"

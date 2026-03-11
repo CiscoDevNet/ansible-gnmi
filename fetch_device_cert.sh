@@ -1,4 +1,8 @@
 #!/bin/bash
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# SPDX-License-Identifier: Apache-2.0
+
 # fetch_device_certs.sh
 # Helper script to fetch SSL certificates from network devices for gNMI
 # and store them for use with gNMI

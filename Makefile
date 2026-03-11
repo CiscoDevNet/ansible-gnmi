@@ -1,3 +1,7 @@
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# SPDX-License-Identifier: Apache-2.0
+
 # cisco.gnmi Ansible Collection - Makefile
 
 .PHONY: help install test test-cov lint clean build sanity

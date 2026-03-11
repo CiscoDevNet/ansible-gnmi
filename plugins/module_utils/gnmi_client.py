@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2025, Jeremy Cohoe <jcohoe@cisco.com>
-# Apache License 2.0 (see LICENSE or http://www.apache.org/licenses/LICENSE-2.0)
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Vendor-Neutral gNMI Client Implementation

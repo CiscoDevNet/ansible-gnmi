@@ -1,7 +1,7 @@
 ---
 namespace: cisco
 name: gnmi
-version: 3.0.2
+version: 3.1.0
 readme: README.md
 authors:
   - Jeremy Cohoe <jcohoe@cisco.com>

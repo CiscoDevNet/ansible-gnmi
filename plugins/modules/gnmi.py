@@ -28,6 +28,12 @@ notes:
   - Install with C(pip install grpcio grpcio-tools protobuf).
   - gNMI must be enabled on the target device.
   - Supports check mode for safe testing of changes.
+  - >-
+    In check mode, SET operations always report C(changed=true) because the
+    module does not perform a structured diff of the proposed configuration
+    against the live configuration. Use diff mode (C(--diff)) to inspect the
+    before/after payloads, or treat C(--check) output as a worst-case
+    estimate rather than authoritative drift detection.
   - Diff mode shows configuration differences before and after changes.
   - "JSON_IETF encoding is recommended for most network devices."
   - "PROTO encoding may not be supported by all platforms for all RPCs."
@@ -367,14 +373,27 @@ EXAMPLES = r'''
 
 RETURN = r'''
 data:
-  description: Data returned from the gNMI operation.
+  description:
+    - Data returned from the gNMI operation.
+    - For B(GET): a mapping of requested path strings to their decoded values.
+      The value type depends on the leaf (dict, list, scalar) and on the
+      configured I(encoding) (typically C(json_ietf)).
+    - For B(SET): a single-key dict C({'timestamp': <int>}) containing the
+      device-reported nanosecond timestamp of the SetResponse.
+    - For B(Subscribe): empty; subscription notifications are returned under
+      the top-level C(updates) key instead.
   returned: success
   type: dict
   sample:
     "/interfaces/interface[name=GigabitEthernet1]/config/description": "Uplink to Core"
     "/interfaces/interface[name=GigabitEthernet1]/config/enabled": true
 changed:
-  description: Whether the operation made changes.
+  description:
+    - Whether the operation made changes.
+    - C(false) for GET and Subscribe operations.
+    - C(true) for successful SET operations.
+    - In check mode, C(true) for SET regardless of whether the proposed
+      configuration differs from the live configuration (see module notes).
   returned: always
   type: bool
   sample: true
@@ -393,11 +412,16 @@ backup_file:
   type: str
   sample: "./backups/192.168.1.1_20250129_120000.json"
 updates:
-  description: List of subscription updates received.
+  description:
+    - List of subscription notifications received from the device.
+    - Each item is a dict with keys C(timestamp) (nanoseconds since epoch),
+      C(prefix) (gNMI path prefix string, may be empty), C(path) (gNMI path
+      string), and C(value) (decoded leaf value or subtree).
   returned: when operation=subscribe
   type: list
   sample:
     - timestamp: 1706529600000000000
+      prefix: ""
       path: "/interfaces/interface[name=GigabitEthernet1]/state/counters"
       value:
         in-octets: 1234567
@@ -459,6 +483,27 @@ class GnmiModule:
             warn_callback=self.module.warn,
         )
 
+    def _validate_backup_path(self, backup_path):
+        """Reject obviously-traversal-y backup paths.
+
+        ``backup_path`` is user-supplied via Ansible task parameters and is
+        eventually passed to ``os.makedirs`` / ``open``. To make traversal
+        attempts explicit (rather than silently writing outside the intended
+        directory), reject any component containing ``..`` and require the
+        path to be either absolute or a simple relative path.
+        """
+        if backup_path is None or backup_path == '':
+            self.module.fail_json(msg="'backup_path' must not be empty when backup=true")
+
+        # Split on both OS separators to catch '..' on Windows-style inputs too.
+        normalized = backup_path.replace('\\', '/')
+        parts = [p for p in normalized.split('/') if p not in ('', '.')]
+        if any(p == '..' for p in parts):
+            self.module.fail_json(
+                msg="'backup_path' must not contain '..' path components: {0}".format(backup_path))
+
+        return backup_path
+
     def _create_backup(self, paths):
         """Create backup of current configuration before changes."""
         if not self.module.params['backup']:
@@ -468,7 +513,7 @@ class GnmiModule:
         if self.module.check_mode:
             return None
 
-        backup_dir = self.module.params['backup_path']
+        backup_dir = self._validate_backup_path(self.module.params['backup_path'])
         if not os.path.exists(backup_dir):
             os.makedirs(backup_dir)
 

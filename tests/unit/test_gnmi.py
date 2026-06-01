@@ -280,5 +280,112 @@ class TestGnmiModuleRun:
             assert 'Connection error' in str(mock_module.fail_json.call_args)
 
 
+class TestGnmiModuleResultShape:
+    """Regression tests for result dictionary structure."""
+
+    def test_result_has_no_failed_key(self, mock_module):
+        """v3.0.1: 'failed' was removed from the result dict (Ansible signals
+        failure via fail_json(), not via this key)."""
+        from ansible_collections.cisco.gnmi.plugins.modules.gnmi import GnmiModule
+
+        mod = GnmiModule(mock_module)
+        assert 'failed' not in mod.result
+        assert mod.result['changed'] is False
+        assert mod.result['msg'] == ''
+        assert mod.result['data'] == {}
+
+
+class TestGnmiModuleBackup:
+    """Regression tests for backup behaviour."""
+
+    def test_backup_skipped_in_check_mode(self, mock_module, mock_gnmi_client, tmp_path):
+        """v3.0.1: _create_backup() must not write files when check_mode=True."""
+        from ansible_collections.cisco.gnmi.plugins.modules.gnmi import GnmiModule
+        from ansible_collections.cisco.gnmi.plugins.module_utils.gnmi_client import GnmiResult
+
+        mock_module.check_mode = True
+        mock_module.params['backup'] = True
+        mock_module.params['backup_path'] = str(tmp_path)
+
+        mock_gnmi_client.get.return_value = GnmiResult(
+            success=True, data={'/x': 'y'}, error=None, changed=False,
+        )
+
+        mod = GnmiModule(mock_module)
+        mod.client = mock_gnmi_client
+
+        result = mod._create_backup(['/x'])
+
+        assert result is None
+        mock_gnmi_client.get.assert_not_called()
+        assert list(tmp_path.iterdir()) == []
+
+    def test_backup_writes_file_when_not_check_mode(self, mock_module, mock_gnmi_client, tmp_path):
+        from ansible_collections.cisco.gnmi.plugins.modules.gnmi import GnmiModule
+        from ansible_collections.cisco.gnmi.plugins.module_utils.gnmi_client import GnmiResult
+
+        mock_module.params['backup'] = True
+        mock_module.params['backup_path'] = str(tmp_path)
+
+        mock_gnmi_client.get.return_value = GnmiResult(
+            success=True, data={'/x': 'y'}, error=None, changed=False,
+        )
+
+        mod = GnmiModule(mock_module)
+        mod.client = mock_gnmi_client
+
+        backup_file = mod._create_backup(['/x'])
+
+        assert backup_file is not None
+        assert str(tmp_path) in backup_file
+        files = list(tmp_path.iterdir())
+        assert len(files) == 1
+
+    def test_backup_path_rejects_traversal(self, mock_module, mock_gnmi_client):
+        """v3.1.0: backup_path containing '..' must be rejected."""
+        from ansible_collections.cisco.gnmi.plugins.modules.gnmi import GnmiModule
+
+        mock_module.params['backup'] = True
+        mock_module.params['backup_path'] = '/var/lib/../../etc'
+
+        mod = GnmiModule(mock_module)
+        mod.client = mock_gnmi_client
+
+        with pytest.raises(SystemExit):
+            mod._create_backup(['/x'])
+
+        mock_module.fail_json.assert_called()
+        msg = str(mock_module.fail_json.call_args)
+        assert '..' in msg
+
+    def test_backup_path_rejects_empty(self, mock_module, mock_gnmi_client):
+        from ansible_collections.cisco.gnmi.plugins.modules.gnmi import GnmiModule
+
+        mock_module.params['backup'] = True
+        mock_module.params['backup_path'] = ''
+
+        mod = GnmiModule(mock_module)
+        mod.client = mock_gnmi_client
+
+        with pytest.raises(SystemExit):
+            mod._create_backup(['/x'])
+
+        mock_module.fail_json.assert_called()
+
+    def test_backup_path_accepts_relative(self, mock_module, mock_gnmi_client, tmp_path, monkeypatch):
+        """Simple relative paths without '..' are accepted."""
+        from ansible_collections.cisco.gnmi.plugins.modules.gnmi import GnmiModule
+
+        monkeypatch.chdir(tmp_path)
+        mock_module.params['backup'] = True
+        mock_module.params['backup_path'] = 'backups'
+
+        mod = GnmiModule(mock_module)
+        # Should not call fail_json; validation passes.
+        assert mod._validate_backup_path('backups') == 'backups'
+        assert mod._validate_backup_path('./backups/today') == './backups/today'
+        assert mod._validate_backup_path('/tmp/backups') == '/tmp/backups'
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

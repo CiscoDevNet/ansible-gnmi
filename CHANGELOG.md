@@ -5,6 +5,40 @@ All notable changes to this collection will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this collection adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-06-01
+
+### Added
+
+- **`backup_path` is now validated** in `plugins/modules/gnmi.py`. Paths
+  containing `..` components are rejected with a clear `fail_json` message,
+  and an empty `backup_path` is rejected when `backup: true`. This makes
+  accidental or malicious directory-traversal attempts explicit instead of
+  silently writing backup files outside the intended directory.
+- **Expanded unit-test suite** (`tests/unit/test_gnmi.py`,
+  `tests/unit/test_gnmi_client.py`) with regression coverage for:
+  - `_create_backup()` short-circuiting in check mode (guards the v3.0.1 fix).
+  - `insecure=true` using `grpc.insecure_channel()` and not invoking
+    `grpc.secure_channel` / `grpc.ssl_channel_credentials` (guards v3.0.1).
+  - Absence of the deprecated `failed` key in the module result dict
+    (guards v3.0.1).
+  - `_read_cert_file()` raising `GnmiConnectionError` with specific
+    messages for missing / unreadable certificate files, including the
+    propagation path through `connect()` (guards v3.0.2).
+  - `backup_path` validation (rejects `..`, rejects empty, accepts plain
+    relative and absolute paths).
+
+### Changed
+
+- **Module documentation: `RETURN` block clarified.** `data` now documents
+  the per-operation shape (GET mapping, SET timestamp dict, Subscribe is
+  empty), and the `updates` key documents the `timestamp` / `prefix` /
+  `path` / `value` sub-fields returned by Subscribe.
+- **Module documentation: check-mode SET caveat added.** A new note in the
+  `DOCUMENTATION` block explicitly states that `--check` always reports
+  `changed=true` for SET because the module does not diff the proposed
+  configuration against the live configuration; users should rely on
+  `--diff` for inspection rather than `--check` for drift detection.
+
 ## [3.0.2] - 2026-06-01
 
 ### Changed

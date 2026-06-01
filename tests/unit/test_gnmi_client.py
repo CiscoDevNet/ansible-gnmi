@@ -325,5 +325,73 @@ class TestSubscribeRestrictions:
         assert '50052' in warnings[0]
 
 
+class TestInsecureChannel:
+    """v3.0.1 regression: insecure=true must use grpc.insecure_channel()
+    instead of building an SSL channel with empty credentials."""
+
+    def test_insecure_uses_insecure_channel(self):
+        with patch('ansible_collections.cisco.gnmi.plugins.module_utils.gnmi_client.grpc') as mock_grpc:
+            client = GnmiClient(
+                host='10.0.0.1', port=9339, username='u', password='p',
+                insecure=True,
+            )
+            client.connect()
+
+            mock_grpc.insecure_channel.assert_called_once_with('10.0.0.1:9339')
+            mock_grpc.secure_channel.assert_not_called()
+            mock_grpc.ssl_channel_credentials.assert_not_called()
+
+    def test_secure_mode_uses_secure_channel(self):
+        with patch('ansible_collections.cisco.gnmi.plugins.module_utils.gnmi_client.grpc') as mock_grpc:
+            client = GnmiClient(
+                host='10.0.0.1', port=9339, username='u', password='p',
+                insecure=False,
+            )
+            client.connect()
+
+            mock_grpc.secure_channel.assert_called_once()
+            mock_grpc.insecure_channel.assert_not_called()
+
+
+class TestReadCertFile:
+    """v3.0.2 regression: _read_cert_file() returns specific error messages
+    instead of opaque connection failures."""
+
+    def test_missing_file_raises_with_path(self, tmp_path):
+        missing = tmp_path / 'nope.pem'
+        with pytest.raises(GnmiConnectionError, match='ca_cert file not found'):
+            GnmiClient._read_cert_file(str(missing), 'ca_cert')
+
+    def test_permission_denied_raises_with_label(self, tmp_path):
+        import os
+        secret = tmp_path / 'cert.pem'
+        secret.write_text('dummy')
+        os.chmod(str(secret), 0o000)
+        try:
+            # Skip if running as root (chmod 000 wouldn't actually deny).
+            if os.geteuid() == 0:
+                pytest.skip('Running as root; permission check is a no-op.')
+            with pytest.raises(GnmiConnectionError, match='client_cert'):
+                GnmiClient._read_cert_file(str(secret), 'client_cert')
+        finally:
+            os.chmod(str(secret), 0o644)
+
+    def test_successful_read_returns_bytes(self, tmp_path):
+        f = tmp_path / 'cert.pem'
+        f.write_bytes(b'-----BEGIN CERTIFICATE-----\n')
+        assert GnmiClient._read_cert_file(str(f), 'ca_cert') == b'-----BEGIN CERTIFICATE-----\n'
+
+    def test_missing_cert_during_connect_raises_clear_error(self, tmp_path):
+        """connect() must propagate _read_cert_file's specific error, not
+        wrap it in a generic 'Failed to connect' message."""
+        with patch('ansible_collections.cisco.gnmi.plugins.module_utils.gnmi_client.grpc'):
+            client = GnmiClient(
+                host='10.0.0.1', port=9339, username='u', password='p',
+                insecure=False, ca_cert=str(tmp_path / 'does-not-exist.pem'),
+            )
+            with pytest.raises(GnmiConnectionError, match='ca_cert file not found'):
+                client.connect()
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

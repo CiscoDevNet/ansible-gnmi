@@ -5,6 +5,18 @@ All notable changes to this collection will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this collection adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2] - 2026-06-01
+
+### Fixed
+- **`galaxy.yml`** – removed `license_file: LICENSE` which conflicted with
+  `license: [Apache-2.0]`. Galaxy now rejects collections that declare both
+  keys, which blocked the 2.0.1 publish.
+
+### Changed
+- **`.github/workflows/galaxy-publish.yml`** – bumped
+  `actions/checkout` from v4.1.5 to v5.0.1 to run on Node.js 24 ahead of
+  the GitHub Actions Node 20 deprecation.
+
 ## [2.0.1] - 2025-03-06
 
 ### Fixed

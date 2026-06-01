@@ -5,6 +5,32 @@ All notable changes to this collection will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this collection adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-06-01
+
+### Breaking Changes
+
+- **Removed `nokia_sros` and `arista_eos` from the `platform` argument's
+  `choices`** in `plugins/modules/gnmi.py`. Modules that pass either value
+  will now fail argument validation. Both profiles were placeholder stubs
+  with no real restrictions (only a default port hint) and are removed so
+  the collection's surface area matches its tested platform support.
+- **Removed `nokia_sros` and `arista_eos` entries from `PLATFORM_PROFILES`**
+  in `plugins/module_utils/gnmi_client.py`.
+
+### Added
+
+- **README: "Using with Other gNMI Implementations" section.** Documents
+  how to use the collection against any OpenConfig gNMI-compliant device by
+  leaving `platform: auto` and configuring `port`, `encoding`, TLS, and
+  `origin` explicitly.
+
+### Removed
+
+- Sanity ignores `validate-modules:doc-choices-do-not-match-spec` and
+  `validate-modules:doc-default-does-not-match-spec` for
+  `plugins/modules/gnmi.py` are no longer needed and have been dropped
+  from `tests/sanity/ignore-2.15..2.18.txt`.
+
 ## [2.0.3] - 2026-06-01
 
 ### Changed

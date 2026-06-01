@@ -156,24 +156,6 @@ PLATFORM_PROFILES = {
         'subscribe_modes': [],
         'notes': '',
     },
-    'nokia_sros': {
-        'default_port': 57400,
-        'recommended_encoding': 'json_ietf',
-        'blocked_encodings_get': [],
-        'blocked_encodings_set': [],
-        'subscribe_list_modes': [],
-        'subscribe_modes': [],
-        'notes': '',
-    },
-    'arista_eos': {
-        'default_port': 6030,
-        'recommended_encoding': 'json',
-        'blocked_encodings_get': [],
-        'blocked_encodings_set': [],
-        'subscribe_list_modes': [],
-        'subscribe_modes': [],
-        'notes': '',
-    },
 }
 
 

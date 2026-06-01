@@ -176,6 +176,50 @@ enforced automatically:
 | `iosxr` | 57400 | — | *none* | *none* | |
 | `nxos` | 50051 | — | *none* | *none* | |
 
+## Using with Other gNMI Implementations
+
+The `platform` parameter only ships profiles for Cisco IOS XE, IOS XR, and
+NX-OS. The underlying client speaks standard
+[OpenConfig gNMI](https://github.com/openconfig/reference/blob/master/rpc/gnmi/gnmi-specification.md),
+so it works with any compliant device when you configure the connection
+explicitly. Leave `platform` at its default (`auto`) to disable all
+platform-specific validation, then set the standard parameters yourself:
+
+```yaml
+- name: GET on a non-Cisco gNMI device
+  cisco.gnmi.gnmi:
+    host: "{{ inventory_hostname }}"
+    port: 57400                       # set the vendor's gNMI port
+    username: "{{ ansible_user }}"
+    password: "{{ ansible_password }}"
+    operation: get
+    paths:
+      - /interfaces/interface
+    encoding: json_ietf               # json | json_ietf | proto
+    datatype: all                     # all | config | state | operational
+    timeout: 30
+    # TLS options
+    insecure: false                   # true = skip server cert verification
+    ca_cert: /path/to/ca.pem          # trust this CA
+    client_cert: /path/to/client.pem  # mutual TLS (required together with key)
+    client_key:  /path/to/client.key
+    # platform defaults to 'auto' - no platform restrictions enforced
+```
+
+Reference for vendor-specific defaults you may want to set:
+
+| Setting | What to configure | Typical values |
+|---|---|---|
+| Port | `port:` | Vendor-documented gNMI port (e.g. 57400, 6030, 32767) |
+| Encoding | `encoding:` | `json_ietf` (most common), `json`, or `proto` if your device supports it |
+| TLS | `ca_cert` / `client_cert` / `client_key` / `insecure` | Per your device's certificate setup |
+| Path origin | `origin:` | e.g. `openconfig`, `rfc7951`, or vendor-specific origins |
+| Subscribe | `subscribe_mode`, `subscriptions[].mode` | `stream`/`once`/`poll`; `sample`/`on_change`/`target_defined` |
+
+If you find your device needs platform-specific guard rails similar to the
+IOS XE profile, open an issue or a pull request at
+<https://github.com/CiscoDevNet/ansible-gnmi>.
+
 ## Development
 
 ```bash

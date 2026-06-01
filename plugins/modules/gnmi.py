@@ -700,7 +700,7 @@ def main():
         client_key=dict(type='path'),
         platform=dict(
             type='str', default='auto',
-            choices=['auto', 'iosxe', 'iosxr', 'nxos', 'nokia_sros', 'arista_eos'],
+            choices=['auto', 'iosxe', 'iosxr', 'nxos'],
         ),
         subscriptions=dict(
             type='list', elements='dict',

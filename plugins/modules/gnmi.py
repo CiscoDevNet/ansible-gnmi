@@ -14,11 +14,10 @@ module: gnmi
 short_description: Manage network devices using gNMI (gRPC Network Management Interface)
 version_added: "2.0.0"
 description:
-  - This module provides an interface to interact with network devices using
-    gNMI (gRPC Network Management Interface).
+  - This module provides an interface to interact with Cisco network devices
+    using gNMI (gRPC Network Management Interface).
   - Supports GET, SET, and Subscribe operations per the gNMI specification.
-  - Works with any gNMI-capable device (Cisco IOS XE, IOS XR, NX-OS,
-    Nokia SR OS, Arista EOS, Juniper Junos, etc.).
+  - Tested with Cisco IOS XE, IOS XR, and NX-OS.
   - Provides idempotency, check mode, diff mode, and configuration backup.
   - Optional I(platform) parameter enables platform-specific validation and
     defaults (e.g. encoding restrictions on Cisco IOS XE).
@@ -165,14 +164,12 @@ options:
     type: path
   platform:
     description:
-      - Optional platform hint to enable vendor-specific validation.
-      - C(auto) applies no vendor restrictions (default).
+      - Optional platform hint to enable platform-specific validation.
+      - C(auto) applies no platform restrictions (default).
       - C(iosxe) enforces Cisco IOS XE restrictions (e.g. no PROTO for GET/SET).
       - C(iosxr) applies Cisco IOS XR defaults.
       - C(nxos) applies Cisco NX-OS defaults.
-      - C(nokia_sros) applies Nokia SR OS defaults.
-      - C(arista_eos) applies Arista EOS defaults.
-    choices: ['auto', 'iosxe', 'iosxr', 'nxos', 'nokia_sros', 'arista_eos']
+    choices: ['auto', 'iosxe', 'iosxr', 'nxos']
     default: 'auto'
     type: str
   subscriptions:

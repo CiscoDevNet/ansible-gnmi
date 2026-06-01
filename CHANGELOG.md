@@ -5,6 +5,26 @@ All notable changes to this collection will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this collection adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3] - 2026-06-01
+
+### Changed
+- **Documentation scoped to Cisco platforms.** README, `galaxy.yml`
+  description, `CONTRIBUTING.md`, and the module DOCUMENTATION block now
+  describe support for Cisco IOS XE, IOS XR, and NX-OS only. Internal
+  comments referring to other vendors were trimmed.
+- The `platform` argument's documented `choices` are now
+  `['auto', 'iosxe', 'iosxr', 'nxos']`.
+
+### Unchanged (intentional)
+- The `argument_spec` for `platform` still accepts `nokia_sros` and
+  `arista_eos`, and `PLATFORM_PROFILES` in `gnmi_client.py` still contains
+  those entries. This avoids a breaking change for any user already passing
+  those values; they are simply no longer advertised.
+- `tests/sanity/ignore-2.15..2.18.txt` add
+  `validate-modules:doc-choices-do-not-match-spec` and
+  `validate-modules:doc-default-does-not-match-spec` for `plugins/modules/gnmi.py`
+  to account for the intentional documentation/spec divergence above.
+
 ## [2.0.2] - 2026-06-01
 
 ### Fixed

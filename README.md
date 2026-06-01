@@ -4,10 +4,9 @@
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org/)
 [![Ansible](https://img.shields.io/badge/Ansible-2.15%2B-red)](https://www.ansible.com/)
 
-A vendor-neutral Ansible collection for managing network devices using gNMI
-(gRPC Network Management Interface).  Works with **any gNMI-capable device**
-including Cisco IOS XE, IOS XR, NX-OS, Nokia SR OS, Arista EOS, and Juniper
-Junos.
+An Ansible collection for managing Cisco network devices using gNMI
+(gRPC Network Management Interface). Supports **Cisco IOS XE, IOS XR, and
+NX-OS**.
 
 ## Features
 
@@ -159,7 +158,7 @@ pip install -r requirements.txt
 | `ca_cert` | path | — | CA certificate path |
 | `client_cert` | path | — | Client certificate path |
 | `client_key` | path | — | Client key path |
-| `platform` | str | `auto` | `auto`, `iosxe`, `iosxr`, `nxos`, `nokia_sros`, `arista_eos` |
+| `platform` | str | `auto` | `auto`, `iosxe`, `iosxr`, `nxos` |
 | `origin` | str | — | gNMI path origin (`rfc7951`, `openconfig`, etc.) |
 | `subscriptions` | list | — | Subscription dicts (Subscribe only) |
 | `subscribe_mode` | str | `once` | `stream`, `once`, or `poll` |
@@ -176,8 +175,6 @@ enforced automatically:
 | `iosxe` | 9339 | 50052 | `proto` | List mode: only `stream`; Sub mode: only `on_change`, `sample` | gNMI 0.4.0; PROTO only with Subscribe; atomic SET (all-or-nothing) |
 | `iosxr` | 57400 | — | *none* | *none* | |
 | `nxos` | 50051 | — | *none* | *none* | |
-| `nokia_sros` | 57400 | — | *none* | *none* | |
-| `arista_eos` | 6030 | — | *none* | *none* | |
 
 ## Development
 

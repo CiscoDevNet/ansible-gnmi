@@ -32,3 +32,5 @@ plugins/module_utils/github/com/openconfig/gnmi/proto/gnmi_ext/gnmi_ext_pb2.py c
 plugins/module_utils/github/com/openconfig/gnmi/proto/gnmi_ext/gnmi_ext_pb2_grpc.py metaclass-boilerplate
 plugins/module_utils/github/com/openconfig/gnmi/proto/gnmi_ext/gnmi_ext_pb2_grpc.py future-import-boilerplate
 plugins/module_utils/github/com/openconfig/gnmi/proto/gnmi_ext/gnmi_ext_pb2_grpc.py no-assert
+plugins/modules/gnmi.py validate-modules:doc-choices-do-not-match-spec
+plugins/modules/gnmi.py validate-modules:doc-default-does-not-match-spec

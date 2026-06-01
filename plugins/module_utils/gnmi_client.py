@@ -6,18 +6,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Vendor-Neutral gNMI Client Implementation
+gNMI Client Implementation for Cisco Network Devices
 
 This module implements a gNMI (gRPC Network Management Interface) client
-that works with any gNMI-capable network device, including but not limited to:
+for Cisco network devices:
 
     - Cisco IOS XE (default port 9339)
     - Cisco IOS XR (default port 57400)
     - Cisco NX-OS (default port 50051)
-    - Nokia SR OS (default port 57400)
-    - Arista EOS (default port 6030)
-    - Juniper Junos (default port 32767)
-    - Any OpenConfig gNMI compliant device
 
 gNMI Specification Reference:
     https://github.com/openconfig/reference/blob/master/rpc/gnmi/gnmi-specification.md
@@ -231,8 +227,8 @@ class GnmiClient:
             ca_cert: Path to CA certificate file.
             client_cert: Path to client certificate for mutual TLS.
             client_key: Path to client private key for mutual TLS.
-            platform: Optional platform hint (`auto`, `iosxe`, `iosxr`, `nxos`,
-                       `nokia_sros`, `arista_eos`).  `auto` applies no restrictions.
+            platform: Optional platform hint (`auto`, `iosxe`, `iosxr`, `nxos`).
+                       `auto` applies no restrictions.
             warn_callback: Callable that accepts a single string message, used to
                            emit warnings (e.g. `module.warn`).
         """

@@ -156,10 +156,10 @@ class TestFeatureName:
 
 ### Platform Support
 
-This collection is vendor-neutral by design. When adding features:
-- Default behaviour should work on **any** gNMI-capable device
+This collection targets Cisco network devices. When adding features:
+- Default behaviour should work on supported Cisco platforms (IOS XE, IOS XR, NX-OS)
 - Platform-specific restrictions belong in `PLATFORM_PROFILES` (in `gnmi_client.py`)
-- Use the `platform` parameter to gate vendor-specific logic
+- Use the `platform` parameter to gate platform-specific logic
 - Test with at least one platform profile and the `auto` (default) profile
 
 ## Documentation Guidelines

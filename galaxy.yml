@@ -1,16 +1,15 @@
 ---
 namespace: cisco
 name: gnmi
-version: 2.0.2
+version: 2.0.3
 readme: README.md
 authors:
   - Jeremy Cohoe <jcohoe@cisco.com>
 description: >-
-  Ansible collection for vendor-neutral gNMI (gRPC Network Management Interface) operations.
-  Supports GET, SET, and Subscribe RPCs on any gNMI-capable device including
-  Cisco IOS XE, IOS XR, NX-OS, Nokia SR OS, Arista EOS, and Juniper Junos.
-  Production-ready with TLS support, check/diff mode, configuration backup,
-  and multi-device management.
+  Ansible collection for gNMI (gRPC Network Management Interface) operations on
+  Cisco network devices. Supports GET, SET, and Subscribe RPCs on Cisco IOS XE,
+  IOS XR, and NX-OS. Production-ready with TLS support, check/diff mode,
+  configuration backup, and multi-device management.
 license:
   - Apache-2.0
 tags:

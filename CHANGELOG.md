@@ -9,16 +9,35 @@ and this collection adheres to [Semantic Versioning](https://semver.org/spec/v2.
 
 ### Fixed
 
+- **`ansible-doc` parse regression (introduced in v3.1.0):** the new
+  multi-line `RETURN` description for `data` contained unquoted
+  `For B(GET):` / `For B(SET):` lines whose colons were interpreted by
+  Ansible's YAML loader as mapping keys, breaking
+  `ansible-doc -t module cisco.gnmi.gnmi`. Rewrote the affected entries
+  as folded (`>-`) scalars and removed the flow-mapping example
+  (`C({'timestamp': <int>})`) that would have been a second YAML
+  hazard.
+- **`validate-modules` error:** removed stray `no_log: true` from the
+  `password` parameter's `DOCUMENTATION` block. The flag belongs on the
+  `argument_spec` entry (where it is already set) and is rejected as an
+  unknown documentation key.
 - **CI unit-tests job:** set `PYTHONPATH` to the GitHub workspace root so
   the tests can resolve `ansible_collections.cisco.gnmi.*` imports.
   Without this, every unit test failed at collection with
   `ModuleNotFoundError: No module named 'ansible_collections'`. This was a
   pre-existing bug that became visible after the v3.1.0 test expansion.
-- **CI sanity matrix:** bumped the Python version from 3.10 to 3.11 so
-  that `stable-2.18` and `devel` (which require Python >= 3.11) can
-  install. Dropped `stable-2.15` from the matrix (upstream EOL November
-  2024).
+- **CI sanity matrix:** per-ansible Python pinning — `stable-2.16/2.17/2.18`
+  on Python 3.11, `devel` on Python 3.12 (devel now requires 3.12+).
+  Dropped `stable-2.15` from the matrix (upstream EOL November 2024).
 - **CI units matrix:** dropped Python 3.9 (upstream EOL October 2025).
+- **Sanity ignore files:** dropped obsolete `ignore-2.15.txt`; removed
+  references to sanity tests that no longer exist in ansible-core 2.16+
+  (`metaclass-boilerplate`, `future-import-boilerplate`, `compile-2.7`,
+  `compile-3.5`) and removed `use-argspec-type-path` entries that
+  ansible-test rejects as not applying.
+- **Sanity `__init__.py` placement:** emptied `plugins/modules/__init__.py`
+  and `tests/unit/__init__.py` to comply with the ansible-test
+  requirement that these files be empty.
 
 ### Changed
 

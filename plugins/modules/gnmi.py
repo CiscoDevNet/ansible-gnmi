@@ -83,7 +83,6 @@ options:
       - Password for device authentication.
     required: true
     type: str
-    no_log: true
   operation:
     description:
       - gNMI RPC to execute.
@@ -375,12 +374,15 @@ RETURN = r'''
 data:
   description:
     - Data returned from the gNMI operation.
-    - For B(GET): a mapping of requested path strings to their decoded values.
+    - >-
+      For B(GET): a mapping of requested path strings to their decoded values.
       The value type depends on the leaf (dict, list, scalar) and on the
       configured I(encoding) (typically C(json_ietf)).
-    - For B(SET): a single-key dict C({'timestamp': <int>}) containing the
-      device-reported nanosecond timestamp of the SetResponse.
-    - For B(Subscribe): empty; subscription notifications are returned under
+    - >-
+      For B(SET): a single-key dict containing the device-reported nanosecond
+      timestamp of the SetResponse (key C(timestamp), integer value).
+    - >-
+      For B(Subscribe): empty; subscription notifications are returned under
       the top-level C(updates) key instead.
   returned: success
   type: dict

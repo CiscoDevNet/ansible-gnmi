@@ -13,15 +13,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ansible-core 2.16 / 2.17 require Python 3.10+; 2.18 / devel
-        # require Python 3.11+. Python 3.11 satisfies all.
-        # ansible-core 2.15 reached EOL in November 2024 and is no longer
-        # tested.
-        ansible:
-          - stable-2.16
-          - stable-2.17
-          - stable-2.18
-          - devel
+        # ansible-core 2.16 / 2.17 require Python 3.10+, 2.18 requires
+        # 3.11+, devel currently requires 3.12+. ansible-core 2.15 reached
+        # EOL November 2024 and is no longer tested.
+        include:
+          - ansible: stable-2.16
+            python: '3.11'
+          - ansible: stable-2.17
+            python: '3.11'
+          - ansible: stable-2.18
+            python: '3.11'
+          - ansible: devel
+            python: '3.12'
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
@@ -30,7 +33,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python }}
 
       - name: Install ansible-core (${{ matrix.ansible }})
         run: pip install https://github.com/ansible/ansible/archive/${{ matrix.ansible }}.tar.gz

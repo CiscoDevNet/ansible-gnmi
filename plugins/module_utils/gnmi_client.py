@@ -361,16 +361,10 @@ class GnmiClient:
             target = "{0}:{1}".format(self.host, self.port)
 
             if self.insecure:
-                import os
-                os.environ['GRPC_DEFAULT_SSL_ROOTS_FILE_PATH'] = ''
-                credentials = grpc.ssl_channel_credentials()
-                self.channel = grpc.secure_channel(
-                    target,
-                    credentials,
-                    options=[
-                        ('grpc.ssl_target_name_override', self.host),
-                    ]
-                )
+                # Plaintext gRPC channel - no TLS, no certificate verification.
+                # Used for lab/test environments where the gNMI server is
+                # configured without TLS. Do NOT use in production.
+                self.channel = grpc.insecure_channel(target)
             else:
                 ca_cert_data = None
                 client_cert_data = None

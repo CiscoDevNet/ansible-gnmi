@@ -438,7 +438,6 @@ class GnmiModule:
         self.client = None
         self.result = {
             'changed': False,
-            'failed': False,
             'msg': '',
             'data': {},
         }
@@ -463,6 +462,10 @@ class GnmiModule:
     def _create_backup(self, paths):
         """Create backup of current configuration before changes."""
         if not self.module.params['backup']:
+            return None
+
+        # Honor check_mode: never write files when running with --check.
+        if self.module.check_mode:
             return None
 
         backup_dir = self.module.params['backup_path']

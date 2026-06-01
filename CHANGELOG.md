@@ -5,6 +5,27 @@ All notable changes to this collection will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this collection adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1] - 2026-06-01
+
+### Fixed
+
+- **Insecure mode now actually disables TLS.** `insecure: true` previously
+  built a `secure_channel` with default SSL credentials and an empty
+  `GRPC_DEFAULT_SSL_ROOTS_FILE_PATH`, which still attempted certificate
+  verification and silently mutated the process environment. It now creates
+  a true plaintext `grpc.insecure_channel`, matching user expectations and
+  the gNMI convention for non-TLS deployments
+  (`plugins/module_utils/gnmi_client.py`).
+- **Backup files are no longer written in check mode.** `_create_backup()`
+  was invoked before the `check_mode` guard in `execute_set()`, so running
+  a playbook with `--check` would create real backup files on disk. The
+  helper now short-circuits when `check_mode` is set
+  (`plugins/modules/gnmi.py`).
+- **Removed misleading `failed: False` key from the module result dict.**
+  Ansible signals failure via `fail_json()`, not via a `failed` key in the
+  returned data, so the key was always `False` and could confuse consumers
+  of the result (`plugins/modules/gnmi.py`).
+
 ## [3.0.0] - 2026-06-01
 
 ### Breaking Changes

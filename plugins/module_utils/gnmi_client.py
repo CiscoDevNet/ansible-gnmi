@@ -30,6 +30,13 @@ import logging
 from collections import namedtuple
 
 try:
+    from cryptography import x509
+    from cryptography.hazmat.backends import default_backend
+    HAS_CRYPTOGRAPHY = True
+except ImportError:
+    HAS_CRYPTOGRAPHY = False
+
+try:
     # Import from local generated proto files
     from . import gnmi_pb2, gnmi_pb2_grpc
     HAS_GNMI = True
@@ -334,9 +341,9 @@ class GnmiClient:
                 if sub_mode.lower() not in allowed_sub_modes:
                     msg = (
                         "Subscription mode '{sub_mode}' for path '{path}' "
-                        "is not supported on {plat}.  "
-                        "Supported modes: {allowed}.  "
-                        "Defaulting may cause unexpected behaviour.".format(
+                        "is not supported on {plat} and will be sent to the "
+                        "device as-is; the device is expected to reject it.  "
+                        "Supported modes: {allowed}.".format(
                             sub_mode=sub_mode, path=path,
                             plat=self.platform,
                             allowed=', '.join(allowed_sub_modes)))
@@ -366,19 +373,13 @@ class GnmiClient:
                 # configured without TLS. Do NOT use in production.
                 self.channel = grpc.insecure_channel(target)
             else:
-                ca_cert_data = None
+                ca_cert_data = self._read_cert_file(self.ca_cert, 'ca_cert') if self.ca_cert else None
                 client_cert_data = None
                 client_key_data = None
 
-                if self.ca_cert:
-                    with open(self.ca_cert, 'rb') as fh:
-                        ca_cert_data = fh.read()
-
                 if self.client_cert and self.client_key:
-                    with open(self.client_cert, 'rb') as fh:
-                        client_cert_data = fh.read()
-                    with open(self.client_key, 'rb') as fh:
-                        client_key_data = fh.read()
+                    client_cert_data = self._read_cert_file(self.client_cert, 'client_cert')
+                    client_key_data = self._read_cert_file(self.client_key, 'client_key')
 
                 credentials = grpc.ssl_channel_credentials(
                     root_certificates=ca_cert_data,
@@ -387,10 +388,8 @@ class GnmiClient:
                 )
 
                 options = []
-                if ca_cert_data:
+                if ca_cert_data and HAS_CRYPTOGRAPHY:
                     try:
-                        from cryptography import x509
-                        from cryptography.hazmat.backends import default_backend
                         cert = x509.load_pem_x509_certificate(ca_cert_data, default_backend())
                         for attr in cert.subject:
                             if attr.oid == x509.oid.NameOID.COMMON_NAME:
@@ -412,9 +411,29 @@ class GnmiClient:
                     ('password', self.password),
                 ]
 
+        except GnmiConnectionError:
+            # Already a well-formed error from _read_cert_file or similar;
+            # re-raise without wrapping so the user sees the specific cause.
+            raise
         except Exception as exc:
             raise GnmiConnectionError(
                 "Failed to connect to {0}:{1}: {2}".format(self.host, self.port, exc))
+
+    @staticmethod
+    def _read_cert_file(path, label):
+        """Read a PEM file, raising GnmiConnectionError with clear context on failure."""
+        try:
+            with open(path, 'rb') as fh:
+                return fh.read()
+        except FileNotFoundError:
+            raise GnmiConnectionError(
+                "{0} file not found: {1}".format(label, path))
+        except PermissionError:
+            raise GnmiConnectionError(
+                "{0} file not readable (permission denied): {1}".format(label, path))
+        except OSError as exc:
+            raise GnmiConnectionError(
+                "Failed to read {0} file '{1}': {2}".format(label, path, exc))
 
     def disconnect(self):
         """Close the gRPC channel."""

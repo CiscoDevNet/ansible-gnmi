@@ -5,6 +5,32 @@ All notable changes to this collection will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this collection adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.2] - 2026-06-01
+
+### Changed
+
+- **CI workflow actions are now SHA-pinned.** `actions/checkout` and
+  `actions/setup-python` in `.github/workflows/ci.yml` are pinned to full
+  commit SHAs with version comments, matching the publish workflow and
+  reducing supply-chain risk.
+- **Hoisted `cryptography` imports to module top** in
+  `plugins/module_utils/gnmi_client.py`, gated by `HAS_CRYPTOGRAPHY`. The
+  CN-extraction code now skips gracefully when `cryptography` is not
+  installed instead of relying on a deferred import inside `connect()`.
+- **Clarified subscribe-mode warning text.** When a per-subscription mode
+  is not in a platform's supported list, the warning now says the mode
+  will be sent to the device which is expected to reject it, instead of
+  the misleading "Defaulting may cause unexpected behaviour" (the code
+  does not default the mode).
+
+### Fixed
+
+- **Better error messages for certificate file failures.** Missing,
+  unreadable, or otherwise inaccessible `ca_cert` / `client_cert` /
+  `client_key` files now raise `GnmiConnectionError` with the specific
+  file path and cause (e.g. "ca_cert file not found: /path/to/ca.pem")
+  instead of being wrapped in a generic "Failed to connect" message.
+
 ## [3.0.1] - 2026-06-01
 
 ### Fixed

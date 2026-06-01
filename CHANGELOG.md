@@ -5,6 +5,26 @@ All notable changes to this collection will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this collection adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] - 2026-06-01
+
+### Fixed
+
+- **CI unit-tests job:** set `PYTHONPATH` to the GitHub workspace root so
+  the tests can resolve `ansible_collections.cisco.gnmi.*` imports.
+  Without this, every unit test failed at collection with
+  `ModuleNotFoundError: No module named 'ansible_collections'`. This was a
+  pre-existing bug that became visible after the v3.1.0 test expansion.
+- **CI sanity matrix:** bumped the Python version from 3.10 to 3.11 so
+  that `stable-2.18` and `devel` (which require Python >= 3.11) can
+  install. Dropped `stable-2.15` from the matrix (upstream EOL November
+  2024).
+- **CI units matrix:** dropped Python 3.9 (upstream EOL October 2025).
+
+### Changed
+
+- Added `fail-fast: false` to both CI matrices so a single matrix-cell
+  failure no longer cancels the rest of the run, making diagnosis easier.
+
 ## [3.1.0] - 2026-06-01
 
 ### Added

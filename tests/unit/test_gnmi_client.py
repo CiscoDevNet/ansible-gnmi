@@ -9,7 +9,7 @@ Tests the GnmiClient class with mocked gRPC connections.
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from ansible_collections.cisco.gnmi.plugins.module_utils.gnmi_client import (
     GnmiClient,
     GnmiClientError,

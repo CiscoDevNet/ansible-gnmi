@@ -44,8 +44,9 @@ try:
 except ImportError as e:
     HAS_GNMI = False
     GNMI_IMPORT_ERROR = str(e)
+
     # Create minimal dummy classes to prevent import errors
-    class gnmi_pb2:  # noqa: E303
+    class gnmi_pb2:
         """Dummy gnmi_pb2 when proto files are not available."""
         class Path:
             pass
@@ -240,7 +241,7 @@ class GnmiClient:
         self.client_cert = client_cert
         self.client_key = client_key
         self.platform = platform.lower() if platform else 'auto'
-        self._warn = warn_callback or (lambda msg: logger.warning(msg))
+        self._warn = warn_callback or logger.warning
 
         self.channel = None
         self.stub = None

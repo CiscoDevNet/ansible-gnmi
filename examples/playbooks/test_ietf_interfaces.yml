@@ -1,4 +1,4 @@
-﻿---
+---
 # GET operation - Retrieve IETF interfaces using RFC 7951 origin
 - name: Get IETF Interfaces via gNMI
   hosts: router2

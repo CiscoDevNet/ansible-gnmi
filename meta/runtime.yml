@@ -5,7 +5,7 @@ plugin_routing:
     cisco_iosxe_gnmi:
       redirect: cisco.gnmi.gnmi
       deprecation:
-        removal_version: "3.0.0"
+        removal_version: "4.0.0"
         warning_text: >-
           cisco.gnmi.cisco_iosxe_gnmi has been renamed to cisco.gnmi.gnmi.
           Please update your playbooks.

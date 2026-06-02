@@ -1,3 +1,5 @@
+fetch_device_cert.sh shebang
+install.sh shebang
 plugins/module_utils/__init__.py import-3.11!skip
 plugins/module_utils/__init__.py import-3.12!skip
 plugins/module_utils/github/__init__.py import-3.11!skip
@@ -51,3 +53,4 @@ plugins/module_utils/gnmi_pb2_grpc.py import-3.12!skip
 plugins/module_utils/gnmi_pb2_grpc.py pep8!skip
 plugins/module_utils/gnmi_pb2_grpc.py pylint!skip
 plugins/module_utils/proto/gnmi.proto no-smart-quotes
+verify.sh shebang

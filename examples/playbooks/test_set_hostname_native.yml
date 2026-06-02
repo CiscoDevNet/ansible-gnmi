@@ -1,4 +1,4 @@
-﻿---
+---
 # SET operation - Change hostname using Cisco native YANG model
 - name: Set Hostname via Cisco Native YANG (RFC 7951)
   hosts: router2

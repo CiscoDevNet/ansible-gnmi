@@ -6,14 +6,13 @@
 
   tasks:
     - name: Get IF-MIB ifTable data (RFC 7951 origin)
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
         ca_cert: "{{ gnmi_ca_cert }}"
         timeout: 60
-        operation: get
         encoding: json_ietf
         origin: rfc7951
         paths:

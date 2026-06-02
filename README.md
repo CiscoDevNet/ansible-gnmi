@@ -59,12 +59,11 @@ pip install -r requirements.txt
 
 ```yaml
 - name: Get all interfaces
-  cisco.gnmi.gnmi:
+  cisco.gnmi.info:
     host: "{{ inventory_hostname }}"
     port: 9339
     username: "{{ gnmi_user }}"
     password: "{{ gnmi_password }}"
-    operation: get
     paths:
       - /interfaces/interface
     encoding: json_ietf
@@ -75,12 +74,11 @@ pip install -r requirements.txt
 
 ```yaml
 - name: Set interface description
-  cisco.gnmi.gnmi:
+  cisco.gnmi.config:
     host: "{{ inventory_hostname }}"
     username: "{{ gnmi_user }}"
     password: "{{ gnmi_password }}"
-    operation: set
-    config:
+    update:
       - path: /interfaces/interface[name=GigabitEthernet1]/config/description
         value: "Uplink to Core"
 ```
@@ -89,11 +87,10 @@ pip install -r requirements.txt
 
 ```yaml
 - name: Get counter snapshot
-  cisco.gnmi.gnmi:
+  cisco.gnmi.subscribe:
     host: "{{ inventory_hostname }}"
     username: "{{ gnmi_user }}"
     password: "{{ gnmi_password }}"
-    operation: subscribe
     subscribe_mode: once
     subscriptions:
       - path: /interfaces/interface[name=GigabitEthernet1]/state/counters
@@ -105,13 +102,12 @@ pip install -r requirements.txt
 
 ```yaml
 - name: IOS XE with platform-specific validation
-  cisco.gnmi.gnmi:
+  cisco.gnmi.info:
     host: "{{ inventory_hostname }}"
     port: 9339
     username: "{{ gnmi_user }}"
     password: "{{ gnmi_password }}"
     platform: iosxe
-    operation: get
     paths:
       - /Cisco-IOS-XE-native:native/hostname
     origin: rfc7951
@@ -121,13 +117,12 @@ pip install -r requirements.txt
 
 ```yaml
 - name: Stream on-change interface updates from IOS XE
-  cisco.gnmi.gnmi:
+  cisco.gnmi.subscribe:
     host: "{{ inventory_hostname }}"
     port: 9339
     username: "{{ gnmi_user }}"
     password: "{{ gnmi_password }}"
     platform: iosxe
-    operation: subscribe
     subscribe_mode: stream
     subscribe_duration: 120
     subscriptions:
@@ -187,12 +182,11 @@ platform-specific validation, then set the standard parameters yourself:
 
 ```yaml
 - name: GET on a non-Cisco gNMI device
-  cisco.gnmi.gnmi:
+  cisco.gnmi.info:
     host: "{{ inventory_hostname }}"
     port: 57400                       # set the vendor's gNMI port
     username: "{{ ansible_user }}"
     password: "{{ ansible_password }}"
-    operation: get
     paths:
       - /interfaces/interface
     encoding: json_ietf               # json | json_ietf | proto

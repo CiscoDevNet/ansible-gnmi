@@ -20,11 +20,10 @@
   tasks:
     # Basic ONCE subscription - get snapshot
     - name: Subscribe once to interface statistics
-      cisco.gnmi.gnmi:
+      cisco.gnmi.subscribe:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: subscribe
         subscribe_mode: once
         subscriptions:
           - path: /interfaces/interface[name=GigabitEthernet1]/state/counters
@@ -37,11 +36,10 @@
 
     # Subscribe to multiple paths
     - name: Subscribe to multiple interface paths
-      cisco.gnmi.gnmi:
+      cisco.gnmi.subscribe:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: subscribe
         subscribe_mode: once
         subscriptions:
           - path: /interfaces/interface[name=GigabitEthernet1]/state/counters
@@ -58,11 +56,10 @@
 
     # SAMPLE mode subscription - periodic sampling
     - name: Subscribe with sampling mode
-      cisco.gnmi.gnmi:
+      cisco.gnmi.subscribe:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: subscribe
         subscribe_mode: once
         subscriptions:
           - path: /interfaces/interface[name=GigabitEthernet1]/state/counters
@@ -76,11 +73,10 @@
 
     # ON_CHANGE mode subscription - event-driven
     - name: Subscribe to configuration changes
-      cisco.gnmi.gnmi:
+      cisco.gnmi.subscribe:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: subscribe
         subscribe_mode: once
         subscriptions:
           - path: /interfaces/interface/config
@@ -93,11 +89,10 @@
 
     # Subscribe to all interfaces
     - name: Subscribe to all interface counters
-      cisco.gnmi.gnmi:
+      cisco.gnmi.subscribe:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: subscribe
         subscribe_mode: once
         subscriptions:
           - path: /interfaces/interface/state/counters
@@ -110,11 +105,10 @@
 
     # Subscribe with PROTO encoding (IOS XE 17.11.1+)
     - name: Subscribe with PROTO encoding
-      cisco.gnmi.gnmi:
+      cisco.gnmi.subscribe:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: subscribe
         subscribe_mode: once
         encoding: proto
         subscriptions:
@@ -130,11 +124,10 @@
 
     # Subscribe to system information
     - name: Subscribe to system state
-      cisco.gnmi.gnmi:
+      cisco.gnmi.subscribe:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: subscribe
         subscribe_mode: once
         subscriptions:
           - path: /system/state
@@ -147,11 +140,10 @@
 
     # Extract specific metrics from subscription
     - name: Subscribe and extract specific metrics
-      cisco.gnmi.gnmi:
+      cisco.gnmi.subscribe:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: subscribe
         subscribe_mode: once
         subscriptions:
           - path: /interfaces/interface[name=GigabitEthernet1]/state/counters
@@ -170,11 +162,10 @@
 
     # Monitoring example - save subscription data
     - name: Subscribe and save metrics to file
-      cisco.gnmi.gnmi:
+      cisco.gnmi.subscribe:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: subscribe
         subscribe_mode: once
         subscriptions:
           - path: /interfaces/interface/state/counters
@@ -189,11 +180,10 @@
 
     # Subscribe to specific YANG model paths
     - name: Subscribe to OpenConfig interfaces
-      cisco.gnmi.gnmi:
+      cisco.gnmi.subscribe:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: subscribe
         subscribe_mode: once
         encoding: json_ietf
         subscriptions:
@@ -209,11 +199,10 @@
 
     # Error handling for subscriptions
     - name: Subscribe with error handling
-      cisco.gnmi.gnmi:
+      cisco.gnmi.subscribe:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: subscribe
         subscribe_mode: once
         subscriptions:
           - path: /invalid/path
@@ -228,21 +217,19 @@
 
     # Conditional subscription based on device state
     - name: Get device hostname first
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: get
         paths:
           - /system/config/hostname
       register: device_hostname
 
     - name: Subscribe only if hostname matches
-      cisco.gnmi.gnmi:
+      cisco.gnmi.subscribe:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: subscribe
         subscribe_mode: once
         subscriptions:
           - path: /interfaces/interface/state/counters
@@ -252,11 +239,10 @@
 
     # Aggregate subscription data across multiple devices
     - name: Subscribe to interfaces on all devices
-      cisco.gnmi.gnmi:
+      cisco.gnmi.subscribe:
         host: "{{ item }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: subscribe
         subscribe_mode: once
         subscriptions:
           - path: /interfaces/interface/state/counters

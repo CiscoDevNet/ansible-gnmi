@@ -112,17 +112,16 @@ Then create a pull request on GitHub with:
 - Use YAML best practices
 - Indent with 2 spaces
 - Use descriptive task names
-- Use FQCNs for all modules (e.g. `cisco.gnmi.gnmi`)
+- Use FQCNs for all modules (e.g. `cisco.gnmi.info`, `cisco.gnmi.config`, `cisco.gnmi.subscribe`)
 - Include comments for complex logic
 
 Example:
 ```yaml
 - name: Descriptive task name
-  cisco.gnmi.gnmi:
+  cisco.gnmi.info:
     host: "{{ inventory_hostname }}"
     username: "{{ gnmi_username }}"
     password: "{{ gnmi_password }}"
-    operation: get
     paths:
       - /interfaces/interface
   register: result

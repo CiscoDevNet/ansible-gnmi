@@ -6,13 +6,12 @@
 
   tasks:
     - name: Get system hostname
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
         ca_cert: "{{ gnmi_ca_cert }}"
-        operation: get
         encoding: "{{ gnmi_encoding }}"
         paths:
           - /system/config/hostname
@@ -23,13 +22,12 @@
         msg: "? {{ inventory_hostname }}: {{ hostname_result.data['/system/config/hostname'] }}"
 
     - name: Get memory statistics (Cisco native model)
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
         ca_cert: "{{ gnmi_ca_cert }}"
-        operation: get
         encoding: "{{ gnmi_encoding }}"
         origin: rfc7951
         paths:
@@ -47,13 +45,12 @@
           {% endfor %}
 
     - name: Get interface count
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
         ca_cert: "{{ gnmi_ca_cert }}"
-        operation: get
         encoding: "{{ gnmi_encoding }}"
         paths:
           - /interfaces/interface/config/name

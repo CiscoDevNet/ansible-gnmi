@@ -13,12 +13,11 @@
 
   tasks:
     - name: Try getting system state (might include memory)
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
         password: "{{ device_password }}"
-        operation: get
         encoding: json_ietf
         ca_cert: "/tmp/device_cert.pem"
         paths:
@@ -33,12 +32,11 @@
       when: system_state is succeeded
 
     - name: Try components state
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
         password: "{{ device_password }}"
-        operation: get
         encoding: json_ietf
         ca_cert: "/tmp/device_cert.pem"
         paths:

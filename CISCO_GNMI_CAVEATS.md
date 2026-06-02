@@ -408,12 +408,11 @@ show gnxi state
 
   tasks:
     - name: Get interface configuration
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ inventory_hostname }}"
         port: 9339                    # Secure port
         username: "{{ ansible_user }}"
         password: "{{ ansible_password }}"
-        operation: get
         encoding: json_ietf           # RECOMMENDED encoding
         datatype: config
         paths:
@@ -425,15 +424,13 @@ show gnxi state
       register: interface_config
 
     - name: Update interface with proper namespace
-      cisco.gnmi.gnmi:
+      cisco.gnmi.config:
         host: "{{ inventory_hostname }}"
         port: 9339
         username: "{{ ansible_user }}"
         password: "{{ ansible_password }}"
-        operation: set
-        state: present
         encoding: json_ietf
-        config:
+        update:
           - path: /interfaces/interface[name=GigabitEthernet1]/config
             value:
               openconfig-interfaces:description: "Managed by Ansible"
@@ -443,12 +440,11 @@ show gnxi state
       register: set_result
 
     - name: Subscribe to interface statistics (PROTO allowed here)
-      cisco.gnmi.gnmi:
+      cisco.gnmi.subscribe:
         host: "{{ inventory_hostname }}"
         port: 9339
         username: "{{ ansible_user }}"
         password: "{{ ansible_password }}"
-        operation: subscribe
         encoding: proto               # PROTO works with Subscribe
         subscribe_mode: stream
         subscribe_duration: 60

@@ -13,12 +13,11 @@
 
   tasks:
     - name: Test 1 - Get system hostname
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
         password: "{{ device_password }}"
-        operation: get
         encoding: json_ietf
         ca_cert: "/tmp/device_cert.pem"  # Use device's self-signed certificate
         paths:
@@ -31,12 +30,11 @@
         var: hostname_result
 
     - name: Test 2 - Get interface list
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
         password: "{{ device_password }}"
-        operation: get
         encoding: json_ietf
         ca_cert: "/tmp/device_cert.pem"
         paths:

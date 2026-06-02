@@ -13,12 +13,11 @@
 
   tasks:
     - name: Get memory statistics
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
         password: "{{ device_password }}"
-        operation: get
         encoding: json_ietf
         ca_cert: "/tmp/device_cert.pem"
         origin: rfc7951

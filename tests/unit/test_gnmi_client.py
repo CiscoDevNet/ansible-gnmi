@@ -40,7 +40,7 @@ class TestGnmiClientInit:
     def test_invalid_encoding_raises(self):
         with pytest.raises(GnmiClientError, match='Invalid encoding'):
             GnmiClient(host='10.0.0.1', username='admin', password='secret',
-                       encoding='bytes')
+                       encoding='xml')
 
     def test_invalid_port_raises(self):
         with pytest.raises(GnmiClientError, match='Invalid port'):
@@ -337,7 +337,9 @@ class TestInsecureChannel:
             )
             client.connect()
 
-            mock_grpc.insecure_channel.assert_called_once_with('10.0.0.1:9339')
+            mock_grpc.insecure_channel.assert_called_once_with(
+                '10.0.0.1:9339', options=None,
+            )
             mock_grpc.secure_channel.assert_not_called()
             mock_grpc.ssl_channel_credentials.assert_not_called()
 
@@ -391,6 +393,93 @@ class TestReadCertFile:
             )
             with pytest.raises(GnmiConnectionError, match='ca_cert file not found'):
                 client.connect()
+
+
+class TestExplicitOriginPrefix:
+    """Per-path ``origin:/path`` prefix parsing (gnmic / pygnmi convention)."""
+
+    @pytest.fixture
+    def client(self):
+        return GnmiClient(host='10.0.0.1', username='admin', password='secret')
+
+    def test_explicit_origin_prefix_extracted(self, client):
+        path = client._build_path('openconfig:/interfaces/interface')
+        assert path.origin == 'openconfig'
+        assert path.elem[0].name == 'interfaces'
+        assert path.elem[1].name == 'interface'
+
+    def test_explicit_origin_native(self, client):
+        path = client._build_path('native:/Cisco-IOS-XE-native:native/hostname')
+        # Explicit form wins over auto-detection.
+        assert path.origin == 'native'
+
+    def test_explicit_origin_param_wins(self, client):
+        # When both an explicit origin param and an in-path prefix are
+        # given, the explicit param wins.
+        path = client._build_path('openconfig:/interfaces', origin='custom')
+        assert path.origin == 'custom'
+
+    def test_yang_namespace_not_treated_as_origin(self, client):
+        # ``openconfig-interfaces:interfaces`` (no leading ``:/``) is a
+        # YANG namespace, not an explicit origin -> auto-detect kicks in.
+        path = client._build_path('/openconfig-interfaces:interfaces/interface')
+        assert path.origin == 'openconfig'
+        # The path's first element is the namespaced node.
+        assert path.elem[0].name == 'openconfig-interfaces:interfaces'
+
+
+class TestNewConnectionParams:
+    """Token, channel_options, tls_server_name, max_message_length."""
+
+    def test_token_stored(self):
+        client = GnmiClient(host='10.0.0.1', token='abc123')
+        assert client.token == 'abc123'
+
+    def test_token_metadata_takes_precedence_over_password(self):
+        client = GnmiClient(host='10.0.0.1', username='u', password='p',
+                            token='abc123')
+        meta = client._build_metadata()
+        assert meta == [('authorization', 'Bearer abc123')]
+
+    def test_password_metadata_when_no_token(self):
+        client = GnmiClient(host='10.0.0.1', username='u', password='p')
+        assert client._build_metadata() == [('username', 'u'), ('password', 'p')]
+
+    def test_no_metadata_when_no_credentials(self):
+        client = GnmiClient(host='10.0.0.1')
+        assert client._build_metadata() is None
+
+    def test_channel_options_include_max_message_length(self):
+        client = GnmiClient(host='10.0.0.1', username='u', password='p',
+                            max_message_length=10485760)
+        opts = client._build_channel_options()
+        assert ('grpc.max_receive_message_length', 10485760) in opts
+        assert ('grpc.max_send_message_length', 10485760) in opts
+
+    def test_channel_options_merge_user_supplied(self):
+        client = GnmiClient(host='10.0.0.1', username='u', password='p',
+                            channel_options={'grpc.keepalive_time_ms': 30000})
+        opts = client._build_channel_options()
+        assert ('grpc.keepalive_time_ms', 30000) in opts
+
+    def test_tls_server_name_stored(self):
+        client = GnmiClient(host='10.0.0.1', username='u', password='p',
+                            tls_server_name='router.example.com')
+        assert client.tls_server_name == 'router.example.com'
+
+
+class TestNewEncodings:
+    """bytes (1) and ascii (3) encodings."""
+
+    def test_bytes_encoding_value(self):
+        client = GnmiClient(host='10.0.0.1', username='u', password='p',
+                            encoding='bytes')
+        assert client.encoding == 1
+
+    def test_ascii_encoding_value(self):
+        client = GnmiClient(host='10.0.0.1', username='u', password='p',
+                            encoding='ascii')
+        assert client.encoding == 3
 
 
 if __name__ == '__main__':

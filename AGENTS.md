@@ -66,4 +66,4 @@ ansible-playbook examples/playbooks/test_device.yml -i test_inventory.ini
   in CHANGELOG.md.
 - **Testing**: Include unit tests for new functionality. All tests must pass
   before submitting a PR.
-- **Naming**: Follow Ansible collection conventions — FQCN is `cisco.gnmi.gnmi`.
+- **Naming**: Follow Ansible collection conventions. The collection ships four operation-specific modules: `cisco.gnmi.info` (Get), `cisco.gnmi.config` (Set), `cisco.gnmi.subscribe` (Subscribe), `cisco.gnmi.capabilities` (Capabilities).

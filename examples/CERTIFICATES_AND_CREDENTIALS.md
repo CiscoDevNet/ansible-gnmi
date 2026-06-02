@@ -136,14 +136,13 @@ Ansible loads variables in this order (later overrides earlier):
 - hosts: iosxe_devices
   tasks:
     - name: Get hostname
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
         ca_cert: "{{ gnmi_ca_cert | default(omit) }}"
         insecure: "{{ gnmi_insecure | default(false) }}"
-        operation: get
         paths:
           - /system/Config/hostname
 ```
@@ -160,12 +159,11 @@ Ansible loads variables in this order (later overrides earlier):
 - hosts: iosxe_devices
   tasks:
     - name: Get hostname
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: 198.51.100.1
         username: admin
         password: cisco123  # ❌ Hardcoded password
         ca_cert: /tmp/cert.pem
-        operation: get
         paths:
           - /system/Config/hostname
 ```

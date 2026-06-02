@@ -19,12 +19,11 @@
   tasks:
     # Basic GET operation - retrieve all interface configurations
     - name: Get all interface configurations
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ gnmi_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: get
         encoding: json_ietf
         datatype: config
         paths:
@@ -37,11 +36,10 @@
 
     # Get specific interface configuration
     - name: Get GigabitEthernet1 configuration
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: get
         paths:
           - /interfaces/interface[name=GigabitEthernet1]
         datatype: config
@@ -53,11 +51,10 @@
 
     # Get operational state (statistics)
     - name: Get interface operational state
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: get
         paths:
           - /interfaces/interface[name=GigabitEthernet1]/state
         datatype: state
@@ -69,11 +66,10 @@
 
     # Get multiple paths in single operation
     - name: Get multiple configurations
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: get
         paths:
           - /interfaces/interface[name=GigabitEthernet1]/config/description
           - /interfaces/interface[name=GigabitEthernet1]/config/enabled
@@ -87,11 +83,10 @@
 
     # Get system configuration
     - name: Get system hostname
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: get
         paths:
           - /system/config/hostname
         datatype: config
@@ -103,11 +98,10 @@
 
     # Get all data (config + state)
     - name: Get complete interface data
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: get
         paths:
           - /interfaces/interface[name=GigabitEthernet1]
         datatype: all
@@ -119,11 +113,10 @@
 
     # Get with TLS certificate validation
     - name: Get configuration with TLS certificates
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: get
         paths:
           - /system/config
         ca_cert: /path/to/ca.pem
@@ -134,11 +127,10 @@
 
     # Get with different encoding (JSON instead of JSON_IETF)
     - name: Get with JSON encoding
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: get
         encoding: json
         paths:
           - /interfaces/interface[name=GigabitEthernet1]/config
@@ -151,11 +143,10 @@
 
     # Get Cisco native YANG model data (requires origin parameter)
     - name: Get memory statistics (Cisco native model)
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: get
         encoding: json_ietf
         origin: rfc7951  # Required for Cisco-IOS-XE-* models
         paths:
@@ -176,11 +167,10 @@
 
     # Save retrieved data to file
     - name: Get full configuration and save to file
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: get
         paths:
           - /interfaces
         datatype: config

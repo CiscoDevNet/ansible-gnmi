@@ -6,13 +6,12 @@
 
   tasks:
     - name: Get current hostname
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
         ca_cert: "{{ gnmi_ca_cert }}"
-        operation: get
         encoding: "{{ gnmi_encoding }}"
         paths:
           - /system/config/hostname
@@ -24,17 +23,15 @@
         msg: "Current hostname: {{ current_hostname.data['/system/config/hostname'] }}"
 
     - name: Set new hostname
-      cisco.gnmi.gnmi:
+      cisco.gnmi.config:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
         ca_cert: "{{ gnmi_ca_cert }}"
-        operation: set
         encoding: "{{ gnmi_encoding }}"
-        datatype: config
         origin: openconfig
-        config:
+        update:
           - path: "/system/config/hostname"
             value: "test"
       register: set_result
@@ -44,13 +41,12 @@
         var: set_result
 
     - name: Verify new hostname
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
         ca_cert: "{{ gnmi_ca_cert }}"
-        operation: get
         encoding: "{{ gnmi_encoding }}"
         paths:
           - /system/config/hostname

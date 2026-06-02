@@ -6,13 +6,12 @@
 
   tasks:
     - name: Get current hostname (Cisco native)
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
         ca_cert: "{{ gnmi_ca_cert }}"
-        operation: get
         encoding: "{{ gnmi_encoding }}"
         origin: rfc7951
         paths:
@@ -25,16 +24,15 @@
         var: current_hostname.data
 
     - name: Set new hostname using Cisco native YANG
-      cisco.gnmi.gnmi:
+      cisco.gnmi.config:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
         ca_cert: "{{ gnmi_ca_cert }}"
-        operation: set
         encoding: "{{ gnmi_encoding }}"
         origin: rfc7951
-        config:
+        update:
           - path: "/Cisco-IOS-XE-native:native/hostname"
             value: "set-by-ys-gnmi"
       register: set_result
@@ -44,13 +42,12 @@
         var: set_result
 
     - name: Verify new hostname
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
         ca_cert: "{{ gnmi_ca_cert }}"
-        operation: get
         encoding: "{{ gnmi_encoding }}"
         origin: rfc7951
         paths:

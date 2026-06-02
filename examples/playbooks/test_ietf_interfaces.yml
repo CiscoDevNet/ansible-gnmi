@@ -6,13 +6,12 @@
 
   tasks:
     - name: Get IETF interfaces (RFC 7951 origin)
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
         ca_cert: "{{ gnmi_ca_cert }}"
-        operation: get
         encoding: "{{ gnmi_encoding }}"
         origin: rfc7951
         paths:

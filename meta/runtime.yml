@@ -1,11 +1,9 @@
 ---
 requires_ansible: '>=2.15.0'
-plugin_routing:
-  modules:
-    cisco_iosxe_gnmi:
-      redirect: cisco.gnmi.gnmi
-      deprecation:
-        removal_version: "4.0.0"
-        warning_text: >-
-          cisco.gnmi.cisco_iosxe_gnmi has been renamed to cisco.gnmi.gnmi.
-          Please update your playbooks.
+# Note: the legacy module names ``cisco.gnmi.cisco_iosxe_gnmi`` and
+# ``cisco.gnmi.gnmi`` were removed in 4.0.0. They have been replaced by
+# operation-specific modules and there is no redirect:
+#   * cisco.gnmi.info          (gNMI Get)
+#   * cisco.gnmi.config        (gNMI Set)
+#   * cisco.gnmi.subscribe     (gNMI Subscribe)
+#   * cisco.gnmi.capabilities  (gNMI Capabilities)

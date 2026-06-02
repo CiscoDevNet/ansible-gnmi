@@ -13,14 +13,13 @@
   tasks:
     # Example 1: Get hostname (OpenConfig model)
     - name: Get system hostname
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
         ca_cert: "{{ gnmi_ca_cert | default(omit) }}"
         insecure: "{{ gnmi_insecure | default(false) }}"
-        operation: get
         encoding: "{{ gnmi_encoding }}"
         paths:
           - /system/config/hostname
@@ -32,14 +31,13 @@
 
     # Example 2: Get memory statistics (Cisco native model with origin)
     - name: Get memory statistics
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
         ca_cert: "{{ gnmi_ca_cert | default(omit) }}"
         insecure: "{{ gnmi_insecure | default(false) }}"
-        operation: get
         encoding: "{{ gnmi_encoding }}"
         origin: rfc7951  # Required for Cisco native models
         paths:
@@ -56,14 +54,13 @@
 
     # Example 3: Get interface configuration
     - name: Get all interfaces
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
         ca_cert: "{{ gnmi_ca_cert | default(omit) }}"
         insecure: "{{ gnmi_insecure | default(false) }}"
-        operation: get
         encoding: "{{ gnmi_encoding }}"
         paths:
           - /interfaces/interface
@@ -76,19 +73,17 @@
 
     # Example 4: Set interface description
     - name: Update interface description
-      cisco.gnmi.gnmi:
+      cisco.gnmi.config:
         host: "{{ ansible_host }}"
         port: "{{ gnmi_port }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
         ca_cert: "{{ gnmi_ca_cert | default(omit) }}"
         insecure: "{{ gnmi_insecure | default(false) }}"
-        operation: set
         encoding: "{{ gnmi_encoding }}"
-        paths:
-          - /interfaces/interface[name=GigabitEthernet1]/config/description
-        config:
-          description: "Configured via Ansible gNMI - {{ ansible_date_time.iso8601 }}"
+        update:
+          - path: /interfaces/interface[name=GigabitEthernet1]/config/description
+            value: "Configured via Ansible gNMI - {{ ansible_date_time.iso8601 }}"
       when: false  # Set to true to actually update
 
 # Notice: All tasks use the same variables from inventory

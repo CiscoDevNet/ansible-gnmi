@@ -5,6 +5,151 @@ All notable changes to this collection will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this collection adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - unreleased
+
+### Breaking changes
+
+- **Module rename / split.** The monolithic `cisco.gnmi.gnmi` module
+  (and its prior alias `cisco.gnmi.cisco_iosxe_gnmi`) has been
+  **removed**. It is replaced by four operation-specific modules that
+  match Ansible best practice (no repeated namespace+name; `_info`
+  convention for read-only operations):
+
+  | Old (`operation:`)            | New module                |
+  | ----------------------------- | ------------------------- |
+  | `cisco.gnmi.gnmi` `get`       | `cisco.gnmi.info`         |
+  | `cisco.gnmi.gnmi` `set`       | `cisco.gnmi.config`       |
+  | `cisco.gnmi.gnmi` `subscribe` | `cisco.gnmi.subscribe`    |
+  | _(not previously exposed)_    | `cisco.gnmi.capabilities` |
+
+  The `operation:` parameter has been dropped — pick the module that
+  matches the RPC you want. No redirect is provided; playbooks must be
+  updated. All other parameters (host, port, auth, certs, paths,
+  config, state, replace, backup, encoding, datatype, subscriptions,
+  subscribe_mode, subscribe_duration, origin, platform, …) are
+  unchanged.
+
+- **`cisco.gnmi.config` redesigned.** The pre-4.0 `state` /
+  `config` / `paths` / `replace` (bool) parameter shape has been
+  replaced with three explicit lists:
+
+  - `update:` — list of `{path, value, origin?}` for merge writes.
+  - `replace:` — list of `{path, value, origin?}` for subtree replaces.
+  - `delete:` — list of path strings *or* `{path, origin?}` dicts.
+
+  Any combination of the three supplied in a single task is sent in
+  one gNMI `SetRequest`, so the device applies them as a single
+  atomic transaction. At least one of the three lists is required.
+
+### Added
+
+- **`cisco.gnmi.capabilities`**: new module that issues the gNMI
+  `Capabilities` RPC and returns the device's gNMI protocol version,
+  supported encodings (e.g. `JSON_IETF`, `PROTO`) and the list of
+  supported YANG models (name / organization / version). Backed by a
+  new `GnmiClient.capabilities()` method.
+- **Atomic mixed `Set`** — `cisco.gnmi.config` now accepts `update`,
+  `replace` and `delete` simultaneously and sends them in one
+  `SetRequest` (one device-side transaction).
+- **`prefix` parameter** on `cisco.gnmi.info` and
+  `GnmiClient.get()`. When set, every entry in `paths` is resolved
+  relative to this common prefix on the wire, reducing GetRequest
+  size for bulk reads.
+- **Per-path origin** via the `origin:/path` prefix syntax (gnmic /
+  pygnmi convention). Recognised by `GnmiClient._build_path` and
+  accepted in every path field of `info` and `config`, in addition to
+  the per-item `origin:` key on `update` / `replace` / `delete`
+  entries.
+- **Token authentication** — new `token:` parameter on all four
+  modules and `GnmiClient(token=...)`. Sent as
+  `authorization: Bearer <token>` gRPC metadata. Takes precedence
+  over `username` / `password`. Either credentials *or* a token must
+  now be supplied.
+- **`tls_server_name`** — explicit override of the TLS server name
+  presented during the gRPC handshake
+  (`grpc.ssl_target_name_override`). Useful when the device's
+  certificate SAN/CN does not match the connect address.
+- **`max_message_length`** — set inbound/outbound gRPC message size
+  limits in bytes (defaults to gRPC's 4 MB). Raise for very large
+  Get responses or Set requests.
+- **`channel_options`** — dict of arbitrary additional gRPC channel
+  options merged into the channel construction (e.g.
+  `grpc.keepalive_time_ms`).
+- **`bytes` and `ascii` encodings** added to the `encoding:` choice
+  list on every module (values `1` and `3` per the gNMI spec).
+
+### Changed
+
+- Shared module logic moved to
+  `plugins/module_utils/module_helper.py` (class `GnmiModule`); each
+  new module file is a thin wrapper that defines only the argument
+  spec relevant to its RPC.
+- `meta/runtime.yml`: dropped the `cisco_iosxe_gnmi` → `gnmi` redirect
+  (the target no longer exists).
+- `username` and `password` are no longer individually required at
+  the argument-spec level — at least one of `(username, token)` must
+  be supplied, and when `username` is given `password` must accompany
+  it (enforced via `required_one_of` / `required_together`).
+
+### Migration
+
+```yaml
+# Before (3.x)
+- cisco.gnmi.gnmi:
+    operation: get
+    paths: ["/interfaces/interface"]
+
+# After (4.0)
+- cisco.gnmi.info:
+    paths: ["/interfaces/interface"]
+```
+
+```yaml
+# Before (3.x or earlier 4.0 drafts)
+- cisco.gnmi.gnmi:
+    operation: set
+    state: present
+    config:
+      - path: /system/config/hostname
+        value: rtr1
+
+# After (4.0)
+- cisco.gnmi.config:
+    update:
+      - path: /system/config/hostname
+        value: rtr1
+```
+
+```yaml
+# Before
+- cisco.gnmi.gnmi:
+    operation: set
+    state: absent
+    paths:
+      - /interfaces/interface[name=Gi3]
+
+# After
+- cisco.gnmi.config:
+    delete:
+      - /interfaces/interface[name=Gi3]
+```
+
+
+```yaml
+# Before (3.x)
+- cisco.gnmi.gnmi:
+    operation: subscribe
+    subscribe_mode: once
+    subscriptions:
+      - path: /interfaces/interface/state/counters
+
+# After (4.0)
+- cisco.gnmi.subscribe:
+    subscribe_mode: once
+    subscriptions:
+      - path: /interfaces/interface/state/counters
+```
+
 ## [3.1.1] - 2026-06-01
 
 ### Fixed

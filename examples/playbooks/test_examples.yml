@@ -15,13 +15,12 @@
 
   tasks:
     - name: "Test 1: Get system hostname (OpenConfig model)"
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
         password: "{{ device_password }}"
         ca_cert: "{{ device_cert }}"
-        operation: get
         encoding: json_ietf
         paths:
           - /system/config/hostname
@@ -33,13 +32,12 @@
         msg: "? Hostname: {{ hostname_result.data['/system/config/hostname'] }}"
 
     - name: "Test 2: Get memory statistics (Cisco native model with origin)"
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
         password: "{{ device_password }}"
         ca_cert: "{{ device_cert }}"
-        operation: get
         encoding: json_ietf
         origin: rfc7951
         paths:
@@ -56,13 +54,12 @@
           {% endfor %}
 
     - name: "Test 3: Get specific interface configuration"
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
         password: "{{ device_password }}"
         ca_cert: "{{ device_cert }}"
-        operation: get
         encoding: json_ietf
         paths:
           - /interfaces/interface[name=GigabitEthernet1/0/1]
@@ -76,13 +73,12 @@
       when: interface_result is succeeded
 
     - name: Try different interface name if first failed
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
         password: "{{ device_password }}"
         ca_cert: "{{ device_cert }}"
-        operation: get
         encoding: json_ietf
         paths:
           - /interfaces/interface[name=Vlan311]
@@ -96,13 +92,12 @@
       when: vlan_result is succeeded
 
     - name: "Test 4: Get all interface names (summary)"
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
         password: "{{ device_password }}"
         ca_cert: "{{ device_cert }}"
-        operation: get
         encoding: json_ietf
         paths:
           - /interfaces/interface/config/name
@@ -114,13 +109,12 @@
         msg: "? Total interfaces configured: {{ all_interfaces.data | length }}"
 
     - name: "Test 5: Get system state information"
-      cisco.gnmi.gnmi:
+      cisco.gnmi.info:
         host: "{{ device_host }}"
         port: "{{ device_port }}"
         username: "{{ device_username }}"
         password: "{{ device_password }}"
         ca_cert: "{{ device_cert }}"
-        operation: get
         encoding: json_ietf
         paths:
           - /system/state

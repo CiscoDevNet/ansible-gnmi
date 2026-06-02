@@ -1,5 +1,5 @@
 ---
-# Example playbook demonstrating SET operations with gNMI
+# Example playbook demonstrating SET operations with gNMI (cisco.gnmi v4.0+).
 #
 # Prerequisites:
 # - gNMI must be enabled on the target device
@@ -18,15 +18,13 @@
     gnmi_password: "your-password"
 
   tasks:
-    # Simple UPDATE operation - set interface description
+    # Simple UPDATE - set interface description
     - name: Set interface description
-      cisco.gnmi.gnmi:
+      cisco.gnmi.config:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: set
-        state: present
-        config:
+        update:
           - path: /interfaces/interface[name=GigabitEthernet1]/config/description
             value: "Uplink to Core Switch"
       register: set_description
@@ -35,15 +33,13 @@
       ansible.builtin.debug:
         msg: "Description set successfully: {{ set_description.changed }}"
 
-    # UPDATE multiple paths
+    # UPDATE multiple paths in one transaction
     - name: Configure multiple interface parameters
-      cisco.gnmi.gnmi:
+      cisco.gnmi.config:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: set
-        state: present
-        config:
+        update:
           - path: /interfaces/interface[name=GigabitEthernet1]/config/description
             value: "Uplink to Core"
           - path: /interfaces/interface[name=GigabitEthernet1]/config/enabled
@@ -56,16 +52,13 @@
       ansible.builtin.debug:
         var: multi_update.data
 
-    # REPLACE operation - replace entire interface config
+    # REPLACE - subtree fully overwritten with supplied value
     - name: Replace interface configuration
-      cisco.gnmi.gnmi:
+      cisco.gnmi.config:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: set
-        state: present
-        replace: true
-        config:
+        replace:
           - path: /interfaces/interface[name=GigabitEthernet2]/config
             value:
               name: GigabitEthernet2
@@ -78,15 +71,13 @@
       ansible.builtin.debug:
         var: replace_config
 
-    # DELETE operation - remove configuration
+    # DELETE - remove configuration paths
     - name: Delete interface description
-      cisco.gnmi.gnmi:
+      cisco.gnmi.config:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: set
-        state: absent
-        paths:
+        delete:
           - /interfaces/interface[name=GigabitEthernet3]/config/description
       register: delete_desc
 
@@ -94,15 +85,31 @@
       ansible.builtin.debug:
         msg: "Description deleted: {{ delete_desc.changed }}"
 
-    # Using check mode (dry-run)
-    - name: Check mode - test changes without applying
-      cisco.gnmi.gnmi:
+    # ATOMIC TRANSACTION - update + replace + delete all in one SetRequest
+    - name: Apply update, replace and delete in a single atomic transaction
+      cisco.gnmi.config:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: set
-        state: present
-        config:
+        update:
+          - path: /system/config/hostname
+            value: "edge-rtr-1"
+        replace:
+          - path: /system/ntp/config
+            value:
+              enabled: true
+              enable-ntp-auth: false
+        delete:
+          - /system/dns/servers/server[address=1.1.1.1]
+      register: atomic_result
+
+    # Check mode (dry-run)
+    - name: Check mode - test changes without applying
+      cisco.gnmi.config:
+        host: "{{ gnmi_host }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        update:
           - path: /interfaces/interface[name=GigabitEthernet1]/config/mtu
             value: 9000
       check_mode: true
@@ -112,15 +119,13 @@
       ansible.builtin.debug:
         msg: "Would change: {{ check_result.changed }}, Message: {{ check_result.msg }}"
 
-    # Using diff mode to see changes
+    # Diff mode
     - name: Set with diff mode enabled
-      cisco.gnmi.gnmi:
+      cisco.gnmi.config:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: set
-        state: present
-        config:
+        update:
           - path: /interfaces/interface[name=GigabitEthernet1]/config/description
             value: "Updated Description"
       diff: true
@@ -130,17 +135,15 @@
       ansible.builtin.debug:
         var: diff_result.diff
 
-    # Create backup before making changes
+    # Backup before applying
     - name: Set configuration with backup
-      cisco.gnmi.gnmi:
+      cisco.gnmi.config:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: set
-        state: present
         backup: true
         backup_path: ./backups
-        config:
+        update:
           - path: /interfaces/interface[name=GigabitEthernet1]/config/description
             value: "Production Link"
       register: backup_result
@@ -149,45 +152,34 @@
       ansible.builtin.debug:
         msg: "Backup saved to: {{ backup_result.backup_file }}"
 
-    # Configure system settings
+    # System hostname
     - name: Set system hostname
-      cisco.gnmi.gnmi:
+      cisco.gnmi.config:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: set
-        state: present
-        config:
+        update:
           - path: /system/config/hostname
             value: "CORE-RTR-01"
       register: hostname_result
 
-    # Configure VLAN
-    - name: Create and configure VLAN
-      cisco.gnmi.gnmi:
+    # Per-item origin via the "origin:/path" prefix (gnmic convention)
+    - name: Use a native-model path with explicit origin
+      cisco.gnmi.config:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: set
-        state: present
-        config:
-          - path: /network-instances/network-instance[name=default]/vlans/vlan[vlan-id=100]/config
-            value:
-              vlan-id: 100
-              name: "DATA_VLAN"
-              status: ACTIVE
-      register: vlan_result
-      when: false  # Enable when VLAN model is supported
+        update:
+          - path: native:/Cisco-IOS-XE-native:native/hostname
+            value: "edge-rtr-1"
 
-    # Idempotent configuration - will only change if needed
+    # Idempotent multi-item update
     - name: Ensure interface has correct configuration (idempotent)
-      cisco.gnmi.gnmi:
+      cisco.gnmi.config:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: set
-        state: present
-        config:
+        update:
           - path: /interfaces/interface[name=GigabitEthernet1]/config/description
             value: "Uplink to Core"
           - path: /interfaces/interface[name=GigabitEthernet1]/config/enabled
@@ -198,19 +190,17 @@
       ansible.builtin.debug:
         msg: "Changed: {{ idempotent_result.changed }}"
 
-    # Comprehensive example with all features
+    # All-the-features example
     - name: Complete configuration with all features
-      cisco.gnmi.gnmi:
+      cisco.gnmi.config:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: set
-        state: present
         encoding: json_ietf
         backup: true
         backup_path: ./backups
         timeout: 60
-        config:
+        update:
           - path: /interfaces/interface[name=GigabitEthernet1]/config/description
             value: "Managed by Ansible"
           - path: /interfaces/interface[name=GigabitEthernet1]/config/enabled
@@ -224,15 +214,13 @@
       ansible.builtin.debug:
         var: complete_config
 
-    # Error handling example
+    # Error-handling example
     - name: Attempt configuration that might fail
-      cisco.gnmi.gnmi:
+      cisco.gnmi.config:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        operation: set
-        state: present
-        config:
+        update:
           - path: /interfaces/interface[name=InvalidInterface]/config/description
             value: "This will fail"
       register: error_result

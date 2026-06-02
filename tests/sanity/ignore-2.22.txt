@@ -61,3 +61,7 @@ plugins/module_utils/gnmi_pb2_grpc.py pep8!skip
 plugins/module_utils/gnmi_pb2_grpc.py pylint!skip
 plugins/module_utils/proto/gnmi.proto no-smart-quotes
 verify.sh shebang
+plugins/modules/capabilities.py validate-modules:missing-gplv3-license
+plugins/modules/config.py validate-modules:missing-gplv3-license
+plugins/modules/info.py validate-modules:missing-gplv3-license
+plugins/modules/subscribe.py validate-modules:missing-gplv3-license

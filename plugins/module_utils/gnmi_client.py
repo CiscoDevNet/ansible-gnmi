@@ -81,6 +81,12 @@ except ImportError as e:
         class Subscription:
             pass
 
+        class CapabilityRequest:
+            pass
+
+        class CapabilityResponse:
+            pass
+
         class Encoding:
             JSON = 0
             BYTES = 1
@@ -179,7 +185,9 @@ class GnmiClient:
 
     ENCODING_MAP = {
         'json': 0,
+        'bytes': 1,
         'proto': 2,
+        'ascii': 3,
         'json_ietf': 4,
     }
 
@@ -195,6 +203,7 @@ class GnmiClient:
                  port=9339,
                  username=None,
                  password=None,
+                 token=None,
                  encoding='json_ietf',
                  timeout=30,
                  insecure=False,
@@ -202,6 +211,9 @@ class GnmiClient:
                  client_cert=None,
                  client_key=None,
                  platform='auto',
+                 tls_server_name=None,
+                 max_message_length=None,
+                 channel_options=None,
                  warn_callback=None):
         """
         Initialise gNMI client.
@@ -211,7 +223,10 @@ class GnmiClient:
             port: gNMI port number.
             username: Authentication username (sent as gRPC metadata).
             password: Authentication password (sent as gRPC metadata).
-            encoding: Data encoding - `json_ietf` (default), `json`, or `proto`.
+            token: Bearer token; sent as ``authorization: Bearer <token>``
+                metadata. When set, takes precedence over username/password.
+            encoding: Data encoding - one of ``json_ietf`` (default), ``json``,
+                ``proto``, ``bytes``, ``ascii``.
             timeout: Connection / RPC timeout in seconds.
             insecure: When *True*, skip TLS certificate validation.
             ca_cert: Path to CA certificate file.
@@ -219,6 +234,15 @@ class GnmiClient:
             client_key: Path to client private key for mutual TLS.
             platform: Optional platform hint (`auto`, `iosxe`, `iosxr`, `nxos`).
                        `auto` applies no restrictions.
+            tls_server_name: Override the TLS server name presented during
+                handshake (``grpc.ssl_target_name_override``). Useful when the
+                cert SAN/CN doesn't match the connect address.
+            max_message_length: Maximum inbound gRPC message size in bytes.
+                Defaults to gRPC's 4 MB; raise for devices that return very
+                large GetResponses (e.g. full-tree dumps).
+            channel_options: Optional dict of additional gRPC channel options
+                merged into the channel construction (e.g.
+                ``{'grpc.keepalive_time_ms': 30000}``).
             warn_callback: Callable that accepts a single string message, used to
                            emit warnings (e.g. `module.warn`).
         """
@@ -233,6 +257,7 @@ class GnmiClient:
         self.port = port
         self.username = username
         self.password = password
+        self.token = token
         self.encoding = self._resolve_encoding(encoding)
         self.encoding_name = encoding.lower() if isinstance(encoding, str) else encoding
         self.timeout = timeout
@@ -241,6 +266,9 @@ class GnmiClient:
         self.client_cert = client_cert
         self.client_key = client_key
         self.platform = platform.lower() if platform else 'auto'
+        self.tls_server_name = tls_server_name
+        self.max_message_length = max_message_length
+        self.channel_options = channel_options or {}
         self._warn = warn_callback or logger.warning
 
         self.channel = None
@@ -367,12 +395,16 @@ class GnmiClient:
         """Establish gRPC channel and instantiate the gNMI stub."""
         try:
             target = "{0}:{1}".format(self.host, self.port)
+            extra_options = self._build_channel_options()
 
             if self.insecure:
                 # Plaintext gRPC channel - no TLS, no certificate verification.
                 # Used for lab/test environments where the gNMI server is
                 # configured without TLS. Do NOT use in production.
-                self.channel = grpc.insecure_channel(target)
+                self.channel = grpc.insecure_channel(
+                    target,
+                    options=extra_options if extra_options else None,
+                )
             else:
                 ca_cert_data = self._read_cert_file(self.ca_cert, 'ca_cert') if self.ca_cert else None
                 client_cert_data = None
@@ -388,8 +420,12 @@ class GnmiClient:
                     certificate_chain=client_cert_data,
                 )
 
-                options = []
-                if ca_cert_data and HAS_CRYPTOGRAPHY:
+                options = list(extra_options)
+
+                # Explicit override wins over CA-cert CN auto-detection.
+                if self.tls_server_name:
+                    options.append(('grpc.ssl_target_name_override', self.tls_server_name))
+                elif ca_cert_data and HAS_CRYPTOGRAPHY:
                     try:
                         cert = x509.load_pem_x509_certificate(ca_cert_data, default_backend())
                         for attr in cert.subject:
@@ -405,12 +441,7 @@ class GnmiClient:
                 )
 
             self.stub = gnmi_pb2_grpc.gNMIStub(self.channel)
-
-            if self.username and self.password:
-                self._metadata = [
-                    ('username', self.username),
-                    ('password', self.password),
-                ]
+            self._metadata = self._build_metadata()
 
         except GnmiConnectionError:
             # Already a well-formed error from _read_cert_file or similar;
@@ -419,6 +450,28 @@ class GnmiClient:
         except Exception as exc:
             raise GnmiConnectionError(
                 "Failed to connect to {0}:{1}: {2}".format(self.host, self.port, exc))
+
+    def _build_channel_options(self):
+        """Merge ``max_message_length`` + ``channel_options`` into a tuple list."""
+        opts = []
+        if self.max_message_length:
+            opts.append(('grpc.max_receive_message_length', int(self.max_message_length)))
+            opts.append(('grpc.max_send_message_length', int(self.max_message_length)))
+        for key, value in self.channel_options.items():
+            opts.append((key, value))
+        return opts
+
+    def _build_metadata(self):
+        """Construct the gRPC metadata sent with every RPC.
+
+        Bearer token takes precedence; otherwise fall back to the legacy
+        ``username``/``password`` headers expected by Cisco gNMI servers.
+        """
+        if self.token:
+            return [('authorization', 'Bearer {0}'.format(self.token))]
+        if self.username and self.password:
+            return [('username', self.username), ('password', self.password)]
+        return None
 
     @staticmethod
     def _read_cert_file(path, label):
@@ -451,14 +504,22 @@ class GnmiClient:
         """
         Build a `gnmi_pb2.Path` from a string.
 
-        The *origin* parameter takes precedence.  If not provided, the
-        method auto-detects an origin from well-known namespace prefixes
-        found in the first path element (e.g. `Cisco-IOS-XE-*`,
-        `Cisco-IOS-XR-*`, `openconfig-*`).
+        The *origin* parameter takes precedence.  If not provided, two
+        forms of in-path origin are recognised:
+
+          1. ``ORIGIN:/path/...`` — explicit ``origin:`` prefix at the
+             start of the string (gnmic / pygnmi convention). The
+             ``ORIGIN:`` prefix is stripped and used as the path's
+             ``origin`` field.
+          2. Auto-detection from well-known YANG namespace prefixes in
+             the first path element (e.g. ``Cisco-IOS-XE-*``,
+             ``openconfig-*``).
 
         Args:
-            path: Path string, e.g. `/interfaces/interface[name=Gi1]/config`.
-            origin: Explicit origin (`rfc7951`, `openconfig`, etc.).
+            path: Path string, e.g. ``/interfaces/interface[name=Gi1]/config``
+                or ``openconfig:/interfaces`` or ``native:/Cisco-IOS-XE-native``.
+            origin: Explicit origin (``rfc7951``, ``openconfig``, ...).
+                Overrides any in-path origin prefix.
 
         Returns:
             `gnmi_pb2.Path`
@@ -466,20 +527,29 @@ class GnmiClient:
         path_elements = []
         extracted_origin = None
 
+        # Form 1: explicit ``origin:/path`` prefix. Only match short
+        # identifier-like origin names followed by ``:/`` to avoid
+        # eating YANG namespace prefixes like ``openconfig-interfaces:``.
+        prefix_origin = self._split_origin_prefix(path)
+        if prefix_origin is not None:
+            extracted_origin, path = prefix_origin
+
         if path.startswith('/'):
             path = path[1:]
 
-        # Auto-detect origin from namespace prefix in the first path element
-        first_elem = path.split('/')[0] if '/' in path else path
-        if ':' in first_elem and '[' not in first_elem.split(':')[0]:
-            prefix_part = first_elem.split(':')[0]
-            if prefix_part.startswith(('Cisco-IOS-XE-', 'Cisco-IOS-XR-',
-                                       'Cisco-IOS-', 'Cisco-NX-OS-')):
-                extracted_origin = 'rfc7951'
-            elif prefix_part.startswith('openconfig'):
-                extracted_origin = 'openconfig'
-            elif prefix_part.startswith(('ietf-', 'IF-MIB', 'RFC')):
-                extracted_origin = 'rfc7951'
+        # Form 2: auto-detect origin from a YANG namespace prefix on the
+        # first element (only when no explicit origin was given anywhere).
+        if extracted_origin is None:
+            first_elem = path.split('/')[0] if '/' in path else path
+            if ':' in first_elem and '[' not in first_elem.split(':')[0]:
+                prefix_part = first_elem.split(':')[0]
+                if prefix_part.startswith(('Cisco-IOS-XE-', 'Cisco-IOS-XR-',
+                                           'Cisco-IOS-', 'Cisco-NX-OS-')):
+                    extracted_origin = 'rfc7951'
+                elif prefix_part.startswith('openconfig'):
+                    extracted_origin = 'openconfig'
+                elif prefix_part.startswith(('ietf-', 'IF-MIB', 'RFC')):
+                    extracted_origin = 'rfc7951'
 
         for element in path.split('/'):
             if not element:
@@ -501,6 +571,28 @@ class GnmiClient:
 
         final_origin = origin if origin is not None else (extracted_origin or '')
         return gnmi_pb2.Path(elem=path_elements, origin=final_origin)
+
+    @staticmethod
+    def _split_origin_prefix(path):
+        """Detect a leading ``ORIGIN:/`` prefix in *path*.
+
+        Returns a ``(origin, remaining_path)`` tuple if found, else None.
+        Only identifier-shaped origins (letters/digits/underscore/dash)
+        immediately followed by ``:/`` are recognised so that YANG
+        namespace prefixes (``openconfig-interfaces:interfaces``) are
+        left untouched.
+        """
+        # Look for ``foo:/`` at the very start, where ``foo`` is a single
+        # token containing no slashes or brackets.
+        idx = path.find(':/')
+        if idx <= 0:
+            return None
+        candidate = path[:idx]
+        if '/' in candidate or '[' in candidate:
+            return None
+        if not all(c.isalnum() or c in ('-', '_') for c in candidate):
+            return None
+        return candidate, path[idx + 1:]
 
     def _path_to_string(self, path):
         """Convert a `gnmi_pb2.Path` back to a human-readable string."""
@@ -570,10 +662,71 @@ class GnmiClient:
         return None
 
     # ------------------------------------------------------------------
+    # CAPABILITIES
+    # ------------------------------------------------------------------
+
+    def capabilities(self):
+        """
+        Execute a gNMI Capabilities RPC.
+
+        Returns:
+            `GnmiResult` whose ``data`` is a dict::
+
+                {
+                    'gnmi_version': str,
+                    'supported_encodings': [str, ...],   # e.g. ['JSON_IETF', 'PROTO']
+                    'supported_models': [
+                        {'name': str, 'organization': str, 'version': str},
+                        ...
+                    ],
+                }
+        """
+        if not self.stub:
+            self.connect()
+
+        try:
+            request = gnmi_pb2.CapabilityRequest()
+            response = self.stub.Capabilities(
+                request, metadata=self._metadata, timeout=self.timeout)
+
+            # Map encoding enum ints back to their string names so callers
+            # don't have to know about the protobuf enum.
+            encoding_names = {
+                v: k for k, v in vars(gnmi_pb2.Encoding).items()
+                if isinstance(v, int) and not k.startswith('_')
+            }
+            supported_encodings = [
+                encoding_names.get(e, str(e)) for e in response.supported_encodings
+            ]
+
+            supported_models = [
+                {
+                    'name': m.name,
+                    'organization': m.organization,
+                    'version': m.version,
+                }
+                for m in response.supported_models
+            ]
+
+            data = {
+                'gnmi_version': response.gNMI_version,
+                'supported_encodings': supported_encodings,
+                'supported_models': supported_models,
+            }
+            return GnmiResult(success=True, data=data, error=None, changed=False)
+
+        except grpc.RpcError as exc:
+            msg = "gNMI Capabilities failed: {0}: {1}".format(exc.code(), exc.details())
+            return GnmiResult(success=False, data=None, error=msg, changed=False)
+        except Exception as exc:
+            msg = "gNMI Capabilities failed: {0}".format(exc)
+            return GnmiResult(success=False, data=None, error=msg, changed=False)
+
+    # ------------------------------------------------------------------
     # GET
     # ------------------------------------------------------------------
 
-    def get(self, paths, datatype='all', encoding=None, origin=None):
+    def get(self, paths, datatype='all', encoding=None, origin=None, prefix=None):
         """
         Execute a gNMI Get RPC.
 
@@ -582,6 +735,10 @@ class GnmiClient:
             datatype: One of `all`, `config`, `state`, `operational`.
             encoding: Override the client-level encoding for this request.
             origin: Origin to set on every path (e.g. `rfc7951`).
+            prefix: Optional path string used as the request ``prefix``.
+                Each entry in *paths* is then resolved relative to this
+                prefix, which can dramatically reduce on-the-wire size
+                when fetching many siblings under a common parent.
 
         Returns:
             `GnmiResult`
@@ -594,11 +751,15 @@ class GnmiClient:
         try:
             path_objects = [self._build_path(p, origin=origin) for p in paths]
 
-            request = gnmi_pb2.GetRequest(
+            request_kwargs = dict(
                 path=path_objects,
                 type=self._get_datatype(datatype),
                 encoding=encoding if encoding is not None else self.encoding,
             )
+            if prefix:
+                request_kwargs['prefix'] = self._build_path(prefix, origin=origin)
+
+            request = gnmi_pb2.GetRequest(**request_kwargs)
 
             response = self.stub.Get(request, metadata=self._metadata, timeout=self.timeout)
             result_data = self._parse_get_response(response)

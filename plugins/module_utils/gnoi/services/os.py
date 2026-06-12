@@ -181,10 +181,13 @@ def install(request):
                 detail = response.install_error.detail
                 if error_name == _ALREADY_RUNNING:
                     # Image already running: idempotent no-op.
+                    already_running_msg = (
+                        "gNOI os/install: full version '{0}' is "
+                        "already running.".format(version)
+                    )
                     return {
                         'changed': False,
-                        'msg': "gNOI os/install: full version '{0}' is "
-                               "already running.".format(version),
+                        'msg': already_running_msg,
                         'response': {
                             'version': version,
                             'requested_version': version,
@@ -222,13 +225,15 @@ def install(request):
                 "staging with 'show install summary' before activating."
                 .format(code.name)
             )
+            staged_msg = (
+                "gNOI os/install: image '{0}' fully transferred "
+                "({1} bytes); device did not emit a terminal "
+                "Validated ({2}). Image is staged. Full version: "
+                "{3}.".format(image_path, package_size, code.name, version)
+            )
             return {
                 'changed': True,
-                'msg': "gNOI os/install: image '{0}' fully transferred "
-                       "({1} bytes); device did not emit a terminal "
-                       "Validated ({2}). Image is staged. Full version: "
-                       "{3}.".format(
-                           image_path, package_size, code.name, version),
+                'msg': staged_msg,
                 'response': {
                     'image_path': image_path,
                     'version': version,
@@ -261,10 +266,13 @@ def install(request):
     # was already present. Report no change. Observed on IOS XE when the
     # requested version matches the running/installed image.
     if validated is not None and bytes_transferred == 0:
+        already_present_msg = (
+            "gNOI os/install: full version '{0}' is already present; "
+            "no transfer needed.".format(validated_version)
+        )
         return {
             'changed': False,
-            'msg': "gNOI os/install: full version '{0}' is already present; "
-                   "no transfer needed.".format(validated_version),
+            'msg': already_present_msg,
             'response': {
                 'image_path': image_path,
                 'version': validated_version,
@@ -279,10 +287,13 @@ def install(request):
             },
         }
 
+    transferred_msg = (
+        "gNOI os/install: image '{0}' transferred and validated. "
+        "Full version: {1}.".format(image_path, validated_version)
+    )
     return {
         'changed': True,
-        'msg': "gNOI os/install: image '{0}' transferred and validated. "
-               "Full version: {1}.".format(image_path, validated_version),
+        'msg': transferred_msg,
         'response': {
             'image_path': image_path,
             'version': validated_version,
@@ -340,10 +351,13 @@ def activate(request):
             timeout=request.timeout,
         )
         if verify_response.version == version:
+            already_active_msg = (
+                "gNOI os/activate: full version '{0}' is already "
+                "active.".format(version)
+            )
             return {
                 'changed': False,
-                'msg': "gNOI os/activate: full version '{0}' is already "
-                       "active.".format(version),
+                'msg': already_active_msg,
                 'response': {
                     'version': version,
                     'version_source': version_source,

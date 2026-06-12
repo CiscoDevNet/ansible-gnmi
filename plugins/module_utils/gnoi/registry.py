@@ -77,7 +77,7 @@ def get_operation(service, operation):
 
 def known_services():
     """Return the sorted set of registered service names."""
-    return sorted({service for service, _ in _REGISTRY})
+    return sorted({service for service, dummy in _REGISTRY})
 
 
 def known_operations(service):

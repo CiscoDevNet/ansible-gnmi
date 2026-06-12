@@ -21,7 +21,6 @@ import threading
 import grpc
 import pytest
 
-from ansible_collections.cisco.gnmi.plugins.module_utils.gnoi import services  # noqa: F401
 from ansible_collections.cisco.gnmi.plugins.module_utils.gnoi.registry import (
     known_services,
     known_operations,
@@ -490,7 +489,7 @@ def test_os_install_deadline_before_full_transfer_still_fails():
         def responses():
             raise FakeRpcError(
                 grpc.StatusCode.DEADLINE_EXCEEDED, 'Deadline Exceeded')
-            yield  # pragma: no cover - generator marker
+            yield  # pragma: no cover  # pylint: disable=unreachable
         return responses()
 
     client.os_stub._Install = install_behaviour
@@ -596,7 +595,7 @@ def test_os_install_already_running_is_idempotent():
 
     def install_behaviour(request_iter, metadata, timeout):
         def drain():
-            for _ in request_iter:
+            for dummy in request_iter:
                 pass
         thread = threading.Thread(target=drain)
         thread.start()
@@ -637,7 +636,7 @@ def test_os_install_validated_without_transfer_is_idempotent():
 
     def install_behaviour(request_iter, metadata, timeout):
         def drain():
-            for _ in request_iter:
+            for dummy in request_iter:
                 pass
         thread = threading.Thread(target=drain)
         thread.start()

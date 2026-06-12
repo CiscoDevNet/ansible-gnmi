@@ -229,6 +229,7 @@ seealso:
   - module: cisco.gnmi.info
   - module: cisco.gnmi.config
   - name: Cisco IOS XE gNOI documentation
+    description: Cisco IOS XE programmability configuration guide covering gNOI.
     link: https://www.cisco.com/c/en/us/td/docs/ios-xml/ios/prog/configuration/26x/26x-programmability-cg/gnoi.html
 '''
 
@@ -366,7 +367,6 @@ try:
         DispatchError,
         dispatch,
     )
-    import ansible_collections.cisco.gnmi.plugins.module_utils.gnoi.services  # noqa: F401
     HAS_GNOI = True
     GNOI_IMPORT_ERROR = None
 except ImportError:

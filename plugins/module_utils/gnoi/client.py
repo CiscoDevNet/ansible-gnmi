@@ -40,11 +40,8 @@ except ImportError:
 
 try:
     from .protos import (
-        cert_pb2,
         cert_pb2_grpc,
-        os_pb2,
         os_pb2_grpc,
-        factory_reset_pb2,
         factory_reset_pb2_grpc,
     )
     HAS_GNOI = True
@@ -52,9 +49,9 @@ try:
 except ImportError as exc:  # pragma: no cover - exercised only without stubs
     HAS_GNOI = False
     GNOI_IMPORT_ERROR = str(exc)
-    cert_pb2 = cert_pb2_grpc = None
-    os_pb2 = os_pb2_grpc = None
-    factory_reset_pb2 = factory_reset_pb2_grpc = None
+    cert_pb2_grpc = None
+    os_pb2_grpc = None
+    factory_reset_pb2_grpc = None
 
 
 logger = logging.getLogger(__name__)

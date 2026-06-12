@@ -11,6 +11,14 @@ __metaclass__ = type
 
 from .registry import get_operation, known_operations, known_services, platform_supports
 
+# Importing the service modules registers their handlers with the registry as a
+# side effect (each handler is decorated with @register). Doing it here means
+# every consumer of the dispatcher gets the cert/os/reset operations without
+# having to import the service modules themselves.
+from .services import cert as _cert  # noqa: F401
+from .services import os as _os  # noqa: F401
+from .services import reset as _reset  # noqa: F401
+
 
 class GnoiRequest:
     """Everything a service handler needs to perform one gNOI operation.

@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         # ansible-core 2.16 / 2.17 require Python 3.10+, 2.18 requires
-        # 3.11+, devel currently requires 3.12+. ansible-core 2.15 reached
+        # 3.11+, devel currently requires 3.13+. ansible-core 2.15 reached
         # EOL November 2024 and is no longer tested.
         include:
           - ansible: stable-2.16
@@ -24,7 +24,7 @@ jobs:
           - ansible: stable-2.18
             python: '3.11'
           - ansible: devel
-            python: '3.12'
+            python: '3.13'
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:

@@ -4,7 +4,7 @@
 
 # cisco.gnmi Ansible Collection - Makefile
 
-.PHONY: help install test test-cov lint clean build sanity
+.PHONY: help install test test-cov lint clean build sanity gnoi-protos
 
 help:
 	@echo "cisco.gnmi Ansible Collection"
@@ -15,6 +15,7 @@ help:
 	@echo "  lint      - Run code quality checks"
 	@echo "  sanity    - Run ansible-test sanity"
 	@echo "  build     - Build collection tarball"
+	@echo "  gnoi-protos - Regenerate vendored gNOI gRPC stubs (needs grpcio-tools)"
 	@echo "  clean     - Remove build artifacts"
 
 install:
@@ -37,6 +38,9 @@ sanity:
 
 build:
 	ansible-galaxy collection build --force
+
+gnoi-protos:
+	bash plugins/module_utils/gnoi/protos/regenerate.sh
 
 clean:
 	rm -rf .pytest_cache htmlcov .coverage *.tar.gz

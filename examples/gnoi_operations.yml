@@ -1,0 +1,156 @@
+---
+# Example playbook demonstrating OpenConfig gNOI operations with cisco.gnmi.gnoi
+#
+# gNOI (gRPC Network Operations Interface) operations covered here:
+#   - os/verify              : read the running OS version (safe, read-only)
+#   - cert/get               : list installed certificates (safe, read-only)
+#   - cert/can_generate_csr  : query CSR capability (safe, read-only)
+#   - cert/install           : install a signed certificate (mutating)
+#   - os/install             : stream and install an OS image (mutating)
+#   - os/activate            : activate an image and REBOOT (destructive)
+#   - factory_reset/start    : wipe and reboot to defaults (destructive)
+#
+# Prerequisites (Cisco IOS XE):
+#   - gRPC / gNMI enabled and reachable (gNOI shares the gNMI endpoint).
+#   - TLS (or mutual TLS) configured. Certificate Management and Factory Reset
+#     require a provisioned (signed) certificate; factory_reset/start returns
+#     FAILED_PRECONDITION otherwise.
+#   - Python dependencies installed (see requirements.txt).
+#
+# SAFETY:
+#   Destructive operations (os/activate, factory_reset/start) require
+#   `confirm: true`. They are disabled by default in this example behind the
+#   `run_destructive` flag. Set `-e run_destructive=true` ONLY against a device
+#   you intend to reboot / wipe.
+
+- name: gNOI Operations Examples (Cisco IOS XE)
+  hosts: iosxe_devices
+  gather_facts: false
+
+  vars:
+    gnoi_host: "192.168.1.1"
+    gnoi_port: 9339
+    gnoi_username: "admin"
+    gnoi_password: "your-password"
+
+    # Set to true ONLY when you intend to reboot or wipe the device.
+    run_destructive: false
+
+    # Target OS image (used by the os/install and os/activate examples).
+    image_path: "/images/cat9k_iosxe.17.18.01a.SPA.bin"
+    image_version: "17.18.01a"
+
+  tasks:
+    # -------------------------------------------------------------------
+    # Read-only operations (safe to run anytime)
+    # -------------------------------------------------------------------
+    - name: Verify the running OS version
+      cisco.gnmi.gnoi:
+        host: "{{ gnoi_host }}"
+        port: "{{ gnoi_port }}"
+        username: "{{ gnoi_username }}"
+        password: "{{ gnoi_password }}"
+        platform: iosxe
+        service: os
+        operation: verify
+      register: os_version
+
+    - name: Show running OS version
+      ansible.builtin.debug:
+        var: os_version.response
+
+    - name: List installed certificates
+      cisco.gnmi.gnoi:
+        host: "{{ gnoi_host }}"
+        username: "{{ gnoi_username }}"
+        password: "{{ gnoi_password }}"
+        platform: iosxe
+        service: cert
+        operation: get
+      register: certificates
+
+    - name: Show installed certificate IDs
+      ansible.builtin.debug:
+        msg: "{{ certificates.response.certificates | map(attribute='certificate_id') | list }}"
+
+    - name: Check whether the device can generate a CSR
+      cisco.gnmi.gnoi:
+        host: "{{ gnoi_host }}"
+        username: "{{ gnoi_username }}"
+        password: "{{ gnoi_password }}"
+        platform: iosxe
+        service: cert
+        operation: can_generate_csr
+        args:
+          key_size: 2048
+      register: csr_capability
+
+    - name: Show CSR capability
+      ansible.builtin.debug:
+        var: csr_capability.response
+
+    # -------------------------------------------------------------------
+    # Certificate Management (mutating, non-destructive)
+    # -------------------------------------------------------------------
+    - name: Install a signed gRPC server certificate
+      cisco.gnmi.gnoi:
+        host: "{{ gnoi_host }}"
+        username: "{{ gnoi_username }}"
+        password: "{{ gnoi_password }}"
+        platform: iosxe
+        service: cert
+        operation: install
+        args:
+          certificate_id: grpc-server
+          certificate: "{{ lookup('file', 'certs/device.pem') }}"
+          private_key: "{{ lookup('file', 'certs/device.key') }}"
+          ca_certificate: "{{ lookup('file', 'certs/ca.pem') }}"
+      when: install_certificate | default(false) | bool
+
+    # -------------------------------------------------------------------
+    # OS Installation (mutating; activate is destructive)
+    # -------------------------------------------------------------------
+    - name: Stream and install an OS image (client-side streaming)
+      cisco.gnmi.gnoi:
+        host: "{{ gnoi_host }}"
+        username: "{{ gnoi_username }}"
+        password: "{{ gnoi_password }}"
+        platform: iosxe
+        service: os
+        operation: install
+        chunk_size: 1048576
+        timeout: 1800
+        args:
+          image_path: "{{ image_path }}"
+          version: "{{ image_version }}"
+      when: install_os | default(false) | bool
+      register: os_install
+
+    - name: Activate the installed image (REBOOTS the device)
+      cisco.gnmi.gnoi:
+        host: "{{ gnoi_host }}"
+        username: "{{ gnoi_username }}"
+        password: "{{ gnoi_password }}"
+        platform: iosxe
+        service: os
+        operation: activate
+        confirm: true
+        args:
+          version: "{{ image_version }}"
+      when: run_destructive | bool
+
+    # -------------------------------------------------------------------
+    # Factory Reset (destructive)
+    # -------------------------------------------------------------------
+    - name: Factory reset the device (wipes state and reboots)
+      cisco.gnmi.gnoi:
+        host: "{{ gnoi_host }}"
+        username: "{{ gnoi_username }}"
+        password: "{{ gnoi_password }}"
+        platform: iosxe
+        service: factory_reset
+        operation: start
+        confirm: true
+        args:
+          zero_fill: false
+      when: run_destructive | bool

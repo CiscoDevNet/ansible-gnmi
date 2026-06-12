@@ -1,0 +1,101 @@
+---
+# Example: connecting to the secure gNMI/gNOI port (9339) WITHOUT managing a CA
+# file, using tls_skip_verify (Trust-On-First-Use / TOFU).
+#
+# What tls_skip_verify does:
+#   - Opens a TLS-ENCRYPTED gRPC channel (unlike `insecure: true`, which is
+#     plaintext and only works on the insecure port, e.g. 50052).
+#   - Trusts whatever certificate the device presents on first connect, without
+#     verifying it against a CA. This is the equivalent of `gnmic --skip-verify`.
+#   - Works on every module in the collection: info, config, subscribe,
+#     capabilities, and gnoi.
+#
+# Security note:
+#   The channel is encrypted, but the server identity is NOT verified, so it is
+#   vulnerable to man-in-the-middle attacks. Use it only on trusted networks.
+#   For production, pin the CA with `ca_cert` instead. A warning is emitted on
+#   every run. An explicit `ca_cert` always takes precedence over this option.
+#
+# ---------------------------------------------------------------------------
+# Running against MANY switches
+# ---------------------------------------------------------------------------
+# This play targets the `iosxe_devices` inventory group, so it runs against
+# every switch in that group. Ansible connects to each host independently and
+# in parallel (up to the `forks` setting in ansible.cfg, default 5). Because
+# `host:` is derived from `ansible_host`/`inventory_hostname`, each switch gets
+# its own gRPC session, its own TOFU certificate fetch, and its own result.
+#
+#   # Run against all switches (5 at a time by default):
+#   ansible-playbook -i inventory.ini tls_skip_verify.yml
+#
+#   # Increase parallelism to 20 switches at a time:
+#   ansible-playbook -i inventory.ini tls_skip_verify.yml --forks 20
+#
+#   # Limit to a subset:
+#   ansible-playbook -i inventory.ini tls_skip_verify.yml --limit access_switches
+#
+# See gnoi_operations.yml for notes on running DESTRUCTIVE gNOI operations
+# (os/activate, factory_reset) safely across multiple switches.
+
+- name: Connect to gNMI/gNOI over TLS without a CA file (skip-verify / TOFU)
+  hosts: iosxe_devices
+  gather_facts: false
+
+  # Each host runs independently; `forks` (ansible.cfg) controls how many
+  # switches are contacted at the same time. `serial:` can throttle further,
+  # e.g. `serial: 1` for one switch at a time, or `serial: "25%"` in batches.
+  # serial: 5
+
+  vars:
+    # These default to the group_vars values; override per-host in host_vars.
+    gnmi_port: "{{ gnmi_port | default(9339) }}"
+    gnmi_username: "{{ gnmi_username | default('admin') }}"
+    # Provide gnmi_password via ansible-vault or --extra-vars; never commit it.
+
+  tasks:
+    - name: Discover capabilities (read-only)
+      cisco.gnmi.capabilities:
+        host: "{{ ansible_host | default(inventory_hostname) }}"
+        port: "{{ gnmi_port }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        platform: iosxe
+        tls_skip_verify: true
+      register: caps
+
+    - name: Show gNMI version per switch
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} -> gNMI {{ caps.data.gnmi_version | default('n/a') }}, {{ caps.data.supported_models | default([]) | length }} models"
+
+    - name: Get the configured hostname (read-only)
+      cisco.gnmi.info:
+        host: "{{ ansible_host | default(inventory_hostname) }}"
+        port: "{{ gnmi_port }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        platform: iosxe
+        tls_skip_verify: true
+        origin: openconfig
+        paths:
+          - /system/config/hostname
+      register: hostname_result
+
+    - name: Show the hostname returned by each switch
+      ansible.builtin.debug:
+        var: hostname_result.data
+
+    - name: Verify the running OS version via gNOI (read-only)
+      cisco.gnmi.gnoi:
+        host: "{{ ansible_host | default(inventory_hostname) }}"
+        port: "{{ gnmi_port }}"
+        username: "{{ gnmi_username }}"
+        password: "{{ gnmi_password }}"
+        platform: iosxe
+        tls_skip_verify: true
+        service: os
+        operation: verify
+      register: os_version
+
+    - name: Show the running OS version per switch
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} -> {{ os_version.response.version | default('n/a') }}"

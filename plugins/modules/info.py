@@ -98,6 +98,17 @@ options:
         for a hostname). Maps to gRPC option
         C(grpc.ssl_target_name_override).
     type: str
+  tls_skip_verify:
+    description:
+      - Establish a TLS (encrypted) channel but do not verify the device
+        certificate against a CA. When set and no I(ca_cert) is provided, the
+        certificate the device presents is fetched and trusted for the session
+        (Trust-On-First-Use), equivalent to C(gnmic --skip-verify).
+      - The channel is encrypted but the server identity is not authenticated,
+        so use it only on trusted networks. Ignored when I(insecure=true) or
+        when I(ca_cert) is set.
+    type: bool
+    default: false
   max_message_length:
     description:
       - Maximum inbound gRPC message size in bytes. Defaults to gRPC's
@@ -140,6 +151,18 @@ EXAMPLES = r'''
     paths:
       - "/interfaces/interface[name=GigabitEthernet1]/state"
     datatype: state
+
+- name: Get hostname over TLS without a CA file (skip-verify / TOFU)
+  cisco.gnmi.info:
+    host: "{{ ansible_host }}"
+    port: 9339
+    username: "{{ gnmi_username }}"
+    password: "{{ gnmi_password }}"
+    platform: iosxe
+    tls_skip_verify: true
+    origin: openconfig
+    paths:
+      - "/system/config/hostname"
 '''
 
 RETURN = r'''

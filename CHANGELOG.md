@@ -5,6 +5,67 @@ All notable changes to this collection will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this collection adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - unreleased
+
+### Added
+
+- **New module `cisco.gnmi.gnoi`** — OpenConfig gNOI (gRPC Network
+  Operations Interface) support using a single generic module with a
+  `service` / `operation` dispatch model. The initial release implements
+  the gNOI services supported by Cisco IOS XE:
+
+  | Service          | Operations                                          |
+  | ---------------- | --------------------------------------------------- |
+  | `cert`           | `install`, `rotate`, `revoke`, `get`, `can_generate_csr` |
+  | `os`             | `install`, `activate`, `verify`                     |
+  | `factory_reset`  | `start`                                             |
+
+  Highlights:
+
+  - Reuses the same gRPC transport and authentication model as the gNMI
+    modules (insecure / TLS / mutual TLS, `tls_server_name` override,
+    bearer token or username/password, `max_message_length`,
+    `channel_options`). On IOS XE, gNOI is served on the same gRPC
+    endpoint as gNMI (default port `9339`).
+  - **Client-side OS image streaming** for `os/install`
+    (`TransferRequest` → `TransferReady` → content chunks → `TransferEnd`
+    → `Validated`). Image URI / HTTP / SCP / TFTP distribution is not
+    supported. Chunk size is tunable via `chunk_size`.
+  - **Safety gating**: destructive operations (`os/activate`,
+    `factory_reset/start`) require `confirm: true` and the module fails
+    safely otherwise.
+  - **Check mode**: mutating operations are skipped (reported as
+    `changed`), read-only operations (`cert/get`, `os/verify`,
+    `cert/can_generate_csr`) still execute.
+  - **Idempotency**: `os/activate` and `os/install` short-circuit when
+    the requested version is already running.
+  - **Normalised gRPC errors**: failures return `grpc_code` and
+    `grpc_message`.
+  - **Platform capability model** (`platform`: `auto`, `iosxe`, `iosxr`,
+    `nxos`) validates known service/operation support; `auto` attempts
+    the operation and lets the device decide.
+  - Secrets (`args.private_key`, `password`, `token`) are marked
+    `no_log` and never appear in module results.
+
+- Vendored OpenConfig gNOI protobuf definitions and generated stubs
+  (`cert`, `os`, `factory_reset`, `types`) under
+  `plugins/module_utils/gnoi/protos/`. Regenerate with
+  `make gnoi-protos`.
+
+- Unit tests for the gNOI registry, dispatcher, service handlers, gRPC
+  error translation, and `no_log` handling (`tests/unit/test_gnoi.py`).
+
+- **`tls_skip_verify` option** for all modules (`cisco.gnmi.info`,
+  `cisco.gnmi.config`, `cisco.gnmi.subscribe`, `cisco.gnmi.capabilities`,
+  and `cisco.gnmi.gnoi`). When enabled and no `ca_cert` is supplied, the
+  client establishes a TLS-encrypted channel and trusts the certificate
+  the device presents on first connect (Trust-On-First-Use). This is the
+  Python-stack equivalent of `gnmic --skip-verify` and lets you talk to
+  the secure gRPC port (`9339`) without managing a CA file. The channel
+  is encrypted but the server identity is **not** authenticated, so a
+  warning is emitted on every run and it should only be used on trusted
+  networks. `ca_cert` and `insecure` both take precedence over it.
+
 ## [4.0.0] - unreleased
 
 ### Breaking changes

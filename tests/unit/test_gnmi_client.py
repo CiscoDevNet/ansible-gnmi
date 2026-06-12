@@ -395,6 +395,149 @@ class TestReadCertFile:
                 client.connect()
 
 
+# ---------------------------------------------------------------------------
+# TLS transport / tls_skip_verify (Trust-On-First-Use)
+# ---------------------------------------------------------------------------
+
+class _FakeChannel:
+    """Minimal channel that satisfies gRPC stub construction."""
+
+    def unary_unary(self, *args, **kwargs):
+        return None
+
+    def unary_stream(self, *args, **kwargs):
+        return None
+
+    def stream_unary(self, *args, **kwargs):
+        return None
+
+    def stream_stream(self, *args, **kwargs):
+        return None
+
+    def close(self):
+        pass
+
+
+def _patch_secure_channel(monkeypatch):
+    """Patch grpc credentials + secure_channel, returning a capture dict."""
+    from ansible_collections.cisco.gnmi.plugins.module_utils import (
+        gnmi_client as client_mod,
+    )
+    captured = {}
+
+    def fake_ssl_creds(root_certificates=None, private_key=None,
+                       certificate_chain=None):
+        captured['root_certificates'] = root_certificates
+        return 'CREDENTIALS'
+
+    def fake_secure_channel(target, credentials, options=None):
+        captured['target'] = target
+        captured['credentials'] = credentials
+        captured['options'] = options
+        return _FakeChannel()
+
+    monkeypatch.setattr(client_mod.grpc, 'ssl_channel_credentials', fake_ssl_creds)
+    monkeypatch.setattr(client_mod.grpc, 'secure_channel', fake_secure_channel)
+    return captured
+
+
+class TestTlsSkipVerify:
+    """tls_skip_verify Trust-On-First-Use behaviour for the gNMI client."""
+
+    def test_tls_skip_verify_fetches_and_trusts_server_cert(self, monkeypatch):
+        captured = _patch_secure_channel(monkeypatch)
+        monkeypatch.setattr(
+            GnmiClient, '_fetch_server_certificate',
+            lambda self: b'-----BEGIN CERTIFICATE-----\nTOFU\n-----END CERTIFICATE-----\n')
+
+        warnings = []
+        client = GnmiClient(host='10.0.0.1', port=9339, username='u', password='p',
+                            tls_skip_verify=True, warn_callback=warnings.append)
+        client.connect()
+
+        # The fetched (TOFU) certificate is used as the channel root of trust.
+        assert captured['root_certificates'] == (
+            b'-----BEGIN CERTIFICATE-----\nTOFU\n-----END CERTIFICATE-----\n')
+        assert captured['target'] == '10.0.0.1:9339'
+        assert any('tls_skip_verify' in w for w in warnings)
+
+    def test_ca_cert_takes_precedence_over_tls_skip_verify(self, monkeypatch, tmp_path):
+        captured = _patch_secure_channel(monkeypatch)
+        fetch_called = {'value': False}
+
+        def fake_fetch(self):
+            fetch_called['value'] = True
+            return b'SHOULD_NOT_BE_USED'
+
+        monkeypatch.setattr(GnmiClient, '_fetch_server_certificate', fake_fetch)
+
+        ca_file = tmp_path / 'ca.pem'
+        ca_file.write_bytes(b'PINNED_CA_PEM')
+
+        client = GnmiClient(host='10.0.0.1', port=9339, username='u', password='p',
+                            ca_cert=str(ca_file), tls_skip_verify=True)
+        client.connect()
+
+        assert fetch_called['value'] is False
+        assert captured['root_certificates'] == b'PINNED_CA_PEM'
+
+    def test_insecure_ignores_tls_skip_verify(self, monkeypatch):
+        from ansible_collections.cisco.gnmi.plugins.module_utils import (
+            gnmi_client as client_mod,
+        )
+        fetch_called = {'value': False}
+        monkeypatch.setattr(
+            GnmiClient, '_fetch_server_certificate',
+            lambda self: fetch_called.__setitem__('value', True) or b'X')
+        monkeypatch.setattr(client_mod.grpc, 'insecure_channel',
+                            lambda target, options=None: _FakeChannel())
+
+        client = GnmiClient(host='10.0.0.1', port=50052, username='u', password='p',
+                            insecure=True, tls_skip_verify=True)
+        client.connect()
+
+        # Plaintext channel: no TLS, so no certificate fetch.
+        assert fetch_called['value'] is False
+
+    def test_fetch_server_certificate_returns_pem(self, monkeypatch):
+        from ansible_collections.cisco.gnmi.plugins.module_utils import (
+            gnmi_client as client_mod,
+        )
+
+        class _Ctx:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        class _FakeTlsSock(_Ctx):
+            def getpeercert(self, binary_form=False):
+                assert binary_form is True
+                return b'DERBYTES'
+
+        class _FakeSock(_Ctx):
+            pass
+
+        class _FakeSslContext:
+            def __init__(self, *args, **kwargs):
+                self.check_hostname = True
+                self.verify_mode = None
+
+            def wrap_socket(self, sock, server_hostname=None):
+                return _FakeTlsSock()
+
+        monkeypatch.setattr(client_mod.socket, 'create_connection',
+                            lambda addr, timeout=None: _FakeSock())
+        monkeypatch.setattr(client_mod.ssl, 'SSLContext', _FakeSslContext)
+        monkeypatch.setattr(client_mod.ssl, 'DER_cert_to_PEM_cert',
+                            lambda der: '-----BEGIN CERTIFICATE-----\nX\n-----END CERTIFICATE-----\n')
+
+        client = GnmiClient(host='10.0.0.1', port=9339, username='u', password='p')
+        pem = client._fetch_server_certificate()
+        assert pem == b'-----BEGIN CERTIFICATE-----\nX\n-----END CERTIFICATE-----\n'
+
+
 class TestExplicitOriginPrefix:
     """Per-path ``origin:/path`` prefix parsing (gnmic / pygnmi convention)."""
 

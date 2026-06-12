@@ -1,0 +1,114 @@
+---
+# gNOI OS upgrade workflow (Cisco IOS XE) using cisco.gnmi.gnoi
+#
+# The OS service splits an upgrade into independent steps so you decide exactly
+# when the device reboots:
+#
+#   1. os/verify   - read the running version (safe, read-only)
+#   2. os/install  - stream the image to the device and stage it (NO reboot)
+#   3. os/activate - boot into the staged image and commit it (REBOOTS)
+#   4. os/verify   - confirm the new version after the device comes back
+#
+# This playbook is split into two stages so you can run them deliberately:
+#
+#   # Stage 1 (default): verify the current version, then stage the image.
+#   ansible-playbook examples/gnoi_os_upgrade.yml -i inventory.ini
+#
+#   # Stage 2: activate the staged image and REBOOT into it.
+#   ansible-playbook examples/gnoi_os_upgrade.yml -i inventory.ini -e do_activate=true
+#
+# Notes:
+#   - You do NOT need to pass `version`: when omitted, the module reads the
+#     canonical CW_FULL_VERSION embedded in the .bin image header and uses it
+#     for both install and activate. Pass `version` explicitly only if you want
+#     to override it.
+#   - os/activate also COMMITS the image on IOS XE - no CLI `install commit`
+#     step is required.
+#   - Set `tls_skip_verify: true` only for a device presenting a self-signed
+#     certificate when you have not pinned a CA (trust-on-first-use). For
+#     production, prefer `ca_cert` (and mutual TLS) instead.
+
+- name: gNOI OS upgrade (Cisco IOS XE)
+  hosts: iosxe_devices
+  gather_facts: false
+
+  vars:
+    gnoi_host: "192.168.1.1"
+    gnoi_port: 9339
+    gnoi_username: "admin"
+    gnoi_password: "your-password"
+
+    # Path to the .bin image on the Ansible controller (it is streamed to the
+    # device over gRPC; it does NOT need to be on the device beforehand).
+    image_path: "/images/cat9k_iosxe.17.18.03a.SPA.bin"
+
+    # Trust-on-first-use for a self-signed device certificate. Use `ca_cert`
+    # in production instead.
+    tls_skip_verify: true
+
+    # Stage 2 guard: activate (and reboot) only runs when this is true.
+    do_activate: false
+
+  tasks:
+    - name: "1. os/verify - baseline running version"
+      cisco.gnmi.gnoi:
+        host: "{{ gnoi_host }}"
+        port: "{{ gnoi_port }}"
+        username: "{{ gnoi_username }}"
+        password: "{{ gnoi_password }}"
+        tls_skip_verify: "{{ tls_skip_verify }}"
+        platform: iosxe
+        service: os
+        operation: verify
+      register: version_before
+
+    - name: "Show baseline version"
+      ansible.builtin.debug:
+        var: version_before.response.version
+
+    - name: "2. os/install - stream and stage the image (NO reboot)"
+      cisco.gnmi.gnoi:
+        host: "{{ gnoi_host }}"
+        port: "{{ gnoi_port }}"
+        username: "{{ gnoi_username }}"
+        password: "{{ gnoi_password }}"
+        tls_skip_verify: "{{ tls_skip_verify }}"
+        platform: iosxe
+        service: os
+        operation: install
+        chunk_size: 1048576       # transfer chunk size in bytes
+        timeout: 600              # gRPC deadline for the streaming transfer
+        args:
+          image_path: "{{ image_path }}"
+          # version: omitted on purpose - derived from the image header.
+      when: not do_activate
+      register: os_install
+
+    - name: "Show install result (note the full version that was staged)"
+      ansible.builtin.debug:
+        var: os_install.response
+      when: not do_activate
+
+    - name: "3. os/activate - boot into the staged image and commit (REBOOTS)"
+      cisco.gnmi.gnoi:
+        host: "{{ gnoi_host }}"
+        port: "{{ gnoi_port }}"
+        username: "{{ gnoi_username }}"
+        password: "{{ gnoi_password }}"
+        tls_skip_verify: "{{ tls_skip_verify }}"
+        platform: iosxe
+        service: os
+        operation: activate
+        confirm: true             # required for destructive operations
+        timeout: 300
+        args:
+          image_path: "{{ image_path }}"
+          # version: omitted - derived from the image header (must match the
+          # image you staged in step 2).
+      when: do_activate
+      register: os_activate
+
+    - name: "Show activate result"
+      ansible.builtin.debug:
+        var: os_activate.response
+      when: do_activate

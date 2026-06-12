@@ -160,23 +160,57 @@
         msg: "Interface GigabitEthernet1 received {{ in_octets }} octets"
       when: in_octets is defined
 
-    # Monitoring example - save subscription data
-    - name: Subscribe and save metrics to file
+    # -----------------------------------------------------------------
+    # Redirecting telemetry to a file
+    # -----------------------------------------------------------------
+    # The subscribe module returns data in the registered variable under
+    # `.updates` (a list); it does not write files itself. Use a follow-up
+    # task to persist it however you like. `now()` works without gather_facts.
+
+    # Pattern 1: stream for a fixed window, then dump the whole batch to JSON.
+    - name: Stream interface counters for 60s
       cisco.gnmi.subscribe:
         host: "{{ gnmi_host }}"
         username: "{{ gnmi_username }}"
         password: "{{ gnmi_password }}"
-        subscribe_mode: once
+        subscribe_mode: stream
+        subscribe_duration: 60
         subscriptions:
           - path: /interfaces/interface/state/counters
-            mode: target_defined
-      register: metrics_data
+            mode: sample
+            sample_interval: 10        # a sample every 10s -> ~6 batches in 60s
+      register: stream_metrics
 
-    - name: Save metrics to JSON file
+    - name: Write the telemetry batch to a timestamped JSON file
       ansible.builtin.copy:
-        content: "{{ metrics_data.updates | to_nice_json }}"
-        dest: "./metrics/{{ gnmi_host }}_{{ ansible_date_time.iso8601_basic_short }}.json"
-      when: metrics_data.updates | length > 0
+        content: "{{ stream_metrics.updates | to_nice_json }}"
+        dest: "./metrics/{{ inventory_hostname }}_{{ now(utc=true).strftime('%Y%m%d_%H%M%S') }}.json"
+      delegate_to: localhost           # write on the controller
+      when: stream_metrics.updates | length > 0
+
+    # Pattern 2: append each poll to a running newline-delimited JSON (NDJSON)
+    # log file - handy for feeding a downstream collector.
+    - name: Append updates to an NDJSON log
+      ansible.builtin.lineinfile:
+        path: "./metrics/{{ inventory_hostname }}.ndjson"
+        line: "{{ item | to_json }}"
+        create: true
+        insertafter: EOF
+      loop: "{{ stream_metrics.updates }}"
+      delegate_to: localhost
+      when: stream_metrics.updates | length > 0
+
+    # Pattern 3: flatten to CSV (path,value per update) using a template.
+    - name: Render a CSV of path/value pairs
+      ansible.builtin.copy:
+        dest: "./metrics/{{ inventory_hostname }}_counters.csv"
+        content: |
+          path,value
+          {% for u in stream_metrics.updates %}
+          {{ u.path }},{{ u.value | to_json | replace(',', ';') }}
+          {% endfor %}
+      delegate_to: localhost
+      when: stream_metrics.updates | length > 0
 
     # Subscribe to specific YANG model paths
     - name: Subscribe to OpenConfig interfaces

@@ -104,6 +104,17 @@ options:
       - Override the TLS server name presented in the TLS handshake
         (gRPC option C(grpc.ssl_target_name_override)).
     type: str
+  tls_skip_verify:
+    description:
+      - Establish a TLS (encrypted) channel but do not verify the device
+        certificate against a CA. When set and no I(ca_cert) is provided, the
+        certificate the device presents is fetched and trusted for the session
+        (Trust-On-First-Use), equivalent to C(gnmic --skip-verify).
+      - The channel is encrypted but the server identity is not authenticated,
+        so use it only on trusted networks. Ignored when I(insecure=true) or
+        when I(ca_cert) is set.
+    type: bool
+    default: false
   max_message_length:
     description:
       - Maximum inbound gRPC message size in bytes. Defaults to gRPC's 4 MB.
@@ -147,6 +158,26 @@ EXAMPLES = r'''
       - path: "/components/component/state/cpu"
         mode: sample
         sample_interval: 5
+
+- name: Stream counters and save the batch to a JSON file on the controller
+  cisco.gnmi.subscribe:
+    host: "{{ ansible_host }}"
+    username: "{{ gnmi_username }}"
+    password: "{{ gnmi_password }}"
+    subscribe_mode: stream
+    subscribe_duration: 60
+    subscriptions:
+      - path: "/interfaces/interface/state/counters"
+        mode: sample
+        sample_interval: 10
+  register: telemetry
+
+- name: Persist the telemetry updates
+  ansible.builtin.copy:
+    content: "{{ telemetry.updates | to_nice_json }}"
+    dest: "./{{ inventory_hostname }}_telemetry.json"
+  delegate_to: localhost
+  when: telemetry.updates | length > 0
 '''
 
 RETURN = r'''

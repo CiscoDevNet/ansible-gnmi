@@ -92,11 +92,20 @@ options:
   backup:
     description:
       - Back up the current config (for the affected paths) before
-        applying the change. Skipped automatically in C(check_mode).
+        applying the change.
+      - This is an Ansible convenience implemented by the module, not a gNMI
+        protocol feature. The module performs a gNMI GET (C(datatype=config))
+        on the affected paths and writes the result as a timestamped JSON file
+        on the Ansible controller (the machine running the playbook), named
+        C(<host>_<YYYYMMDD_HHMMSS>.json). The path is returned as
+        C(backup_file). It is not a device-side checkpoint/rollback.
+      - Skipped automatically in C(check_mode).
     type: bool
     default: false
   backup_path:
-    description: Directory in which to write backups. Must not contain C(..).
+    description:
+      - Directory on the Ansible controller in which to write backups. Must
+        not contain C(..).
     type: path
     default: ./backups
   encoding:
@@ -132,6 +141,17 @@ options:
       - Override the TLS server name presented in the TLS handshake.
         Maps to gRPC option C(grpc.ssl_target_name_override).
     type: str
+  tls_skip_verify:
+    description:
+      - Establish a TLS (encrypted) channel but do not verify the device
+        certificate against a CA. When set and no I(ca_cert) is provided, the
+        certificate the device presents is fetched and trusted for the session
+        (Trust-On-First-Use), equivalent to C(gnmic --skip-verify).
+      - The channel is encrypted but the server identity is not authenticated,
+        so use it only on trusted networks. Ignored when I(insecure=true) or
+        when I(ca_cert) is set.
+    type: bool
+    default: false
   max_message_length:
     description:
       - Maximum inbound gRPC message size in bytes. Defaults to gRPC's

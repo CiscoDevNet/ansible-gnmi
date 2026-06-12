@@ -35,6 +35,7 @@ def _make_mock_module(**overrides):
         'client_cert': None,
         'client_key': None,
         'tls_server_name': None,
+        'tls_skip_verify': False,
         'max_message_length': None,
         'channel_options': None,
         'platform': 'auto',

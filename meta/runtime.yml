@@ -7,3 +7,7 @@ requires_ansible: '>=2.15.0'
 #   * cisco.gnmi.config        (gNMI Set)
 #   * cisco.gnmi.subscribe     (gNMI Subscribe)
 #   * cisco.gnmi.capabilities  (gNMI Capabilities)
+#
+# Added in 4.1.0:
+#   * cisco.gnmi.gnoi          (gNOI: Certificate Management, OS Installation,
+#                              Factory Reset)

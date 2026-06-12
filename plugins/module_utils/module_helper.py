@@ -81,6 +81,7 @@ def connection_argument_spec():
         client_cert=dict(type='path'),
         client_key=dict(type='path'),
         tls_server_name=dict(type='str'),
+        tls_skip_verify=dict(type='bool', default=False),
         max_message_length=dict(type='int'),
         channel_options=dict(type='dict'),
         platform=dict(
@@ -141,6 +142,7 @@ class GnmiModule:
             client_cert=self.module.params.get('client_cert'),
             client_key=self.module.params.get('client_key'),
             tls_server_name=self.module.params.get('tls_server_name'),
+            tls_skip_verify=self.module.params.get('tls_skip_verify'),
             max_message_length=self.module.params.get('max_message_length'),
             channel_options=self.module.params.get('channel_options'),
             platform=self.module.params.get('platform', 'auto'),

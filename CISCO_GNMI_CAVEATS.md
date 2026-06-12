@@ -500,11 +500,134 @@ print(response)
 
 ---
 
+## 16. gNOI Service Caveats (IOS XE)
+
+The collection ships a `cisco.gnmi.gnoi` module covering the Certificate
+Management, OS, and Factory Reset services. The following behaviors were
+observed against a Catalyst 9350 running IOS XE 26.01.01a
+(`26.01.01a.0.441.1777576624`) over the secure gNOI endpoint (port 9339, TLS).
+
+### 16.1 Certificate Management — `cert/install` expects the on-box CSR flow
+
+IOS XE implements `CertificateManagement.Install` around the **GenerateCSR**
+workflow: the device generates the key pair, returns a CSR, you sign it
+externally, and only the signed certificate is loaded back (the private key
+never leaves the device).
+
+Supplying an externally generated `certificate` **and** `private_key` directly
+(the `LoadCertificate` path) is **rejected by the device**. The device accepts
+the RPC, waits ~10 seconds for the expected GenerateCSR exchange, then aborts:
+
+```
+grpc_code: ABORTED
+grpc_message: "Timeout waiting for event"
+```
+
+This is device-side behavior, not a module error — the module streams the
+`LoadCertificate` request correctly and faithfully reports the device's
+`ABORTED` status. If you need to provision a certificate via gNOI on IOS XE,
+use the GenerateCSR-based flow rather than loading an external private key.
+
+### 16.2 Factory Reset — `zero_fill` must be `true` on some builds
+
+On IOS XE 26.01.01a, `factory_reset/start` **requires** `zero_fill: true`.
+Because protobuf encodes a `false` boolean as an absent field, sending
+`zero_fill: false` (or omitting it) makes the device respond:
+
+```
+grpc_code: INVALID_ARGUMENT
+grpc_message: "This device does not support your requested zero fill option"
+```
+
+Set `args.zero_fill: true` to perform the reset. The device then reboots into
+the factory-default state:
+
+```
+Chassis 1 reloading, reason - Factory Reset
+%CLUSTERMGR-1-RELOAD: Reloading due to reason Factory Reset
+```
+
+Factory reset is also only accepted when the device is in a provisioned state
+(a signed, non-self-signed certificate such as the Cisco SUDI is in use);
+otherwise the device returns `FAILED_PRECONDITION`. `factory_os` rollback is
+not supported and is rejected with `INVALID_ARGUMENT`.
+
+### 16.3 OS Install — idempotency when the version is already present
+
+When `os/install` is invoked with a `version` that already matches the
+installed/running image, IOS XE returns `Validated` **immediately** without
+requesting the image content (no `TransferReady` is sent, so zero bytes are
+streamed). The module detects this (`bytes_transferred == 0`) and reports:
+
+```yaml
+changed: false
+response:
+  install_state: already_present
+  transfer_state: skipped
+  bytes_transferred: 0
+```
+
+This makes re-running an `os/install` task safe and idempotent. (Some builds
+instead return an `INSTALL_RUN_PACKAGE` install error, which the module also
+treats as an idempotent no-op with `install_state: already_running`.)
+
+### 16.4 OS Activate — idempotency guard avoids unnecessary reboots
+
+`os/activate` reboots the device. The module performs an `OS.Verify` first and,
+if the running version already matches the requested `version`, returns
+`changed: false` with `activation_state: already_active` **without** issuing the
+Activate RPC — so re-running the task does not trigger a reboot.
+
+### 16.5 Connecting without managing certificates (`tls_skip_verify` / TOFU)
+
+The secure gNOI/gNMI port (default `9339`) requires a TLS handshake, so the
+plaintext `insecure: true` mode only works on the insecure port (`50052`). To
+connect to `9339` against a device using a self-signed certificate **without**
+maintaining a CA file, set `tls_skip_verify: true`. This option is available on
+all modules in the collection — `cisco.gnmi.info`, `cisco.gnmi.config`,
+`cisco.gnmi.subscribe`, `cisco.gnmi.capabilities`, and `cisco.gnmi.gnoi` (they
+share the same gRPC transport).
+
+```yaml
+- cisco.gnmi.gnoi:
+    host: 192.168.1.1
+    port: 9339
+    username: admin
+    password: "your-password"
+    tls_skip_verify: true     # no ca_cert / tls_server_name needed
+    platform: iosxe
+    service: os
+    operation: verify
+```
+
+Behavior and security notes:
+
+- This is the equivalent of `gnmic --skip-verify`. Python's gRPC stack has no
+  literal "skip certificate verification" switch (unlike Go's
+  `InsecureSkipVerify`), so the module implements **Trust-On-First-Use
+  (TOFU)**: when no `ca_cert` is supplied, it fetches the certificate the
+  device presents and trusts it for that run.
+- The channel **is encrypted**, but the server identity is **not** verified
+  against a known CA — it is vulnerable to man-in-the-middle. Use it only on
+  trusted lab/management networks. The module emits a warning on every run to
+  make this explicit.
+- The certificate's Common Name is auto-detected for the TLS target-name
+  override (when `cryptography` is installed), so self-signed certificates with
+  no SAN — as IOS XE generates — work without setting `tls_server_name`.
+- Precedence: `insecure: true` (plaintext) wins if set; otherwise an explicit
+  `ca_cert` pin wins over `tls_skip_verify`. For repeatable, verified
+  connections, pin the device certificate as `ca_cert` instead.
+
+---
+
 ## Version History
 
 | Date | Version | Changes |
 |------|---------|---------|
 | 2025-10-29 | 1.0 | Initial documentation based on IOS XE 17.18.x guide |
+| 2026-06-12 | 1.1 | Added section 16: gNOI service caveats validated on IOS XE 26.01.01a (Catalyst 9350) |
+| 2026-06-12 | 1.2 | Added section 16.5: tls_skip_verify (TOFU) for connecting to port 9339 without a CA file |
+| 2026-06-12 | 1.3 | Extended tls_skip_verify (TOFU) to the gNMI modules: info, config, subscribe, capabilities |
 
 ---
 

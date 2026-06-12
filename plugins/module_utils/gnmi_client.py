@@ -27,6 +27,8 @@ __metaclass__ = type
 import grpc
 import json
 import logging
+import socket
+import ssl
 from collections import namedtuple
 
 try:
@@ -212,6 +214,7 @@ class GnmiClient:
                  client_key=None,
                  platform='auto',
                  tls_server_name=None,
+                 tls_skip_verify=False,
                  max_message_length=None,
                  channel_options=None,
                  warn_callback=None):
@@ -228,7 +231,8 @@ class GnmiClient:
             encoding: Data encoding - one of ``json_ietf`` (default), ``json``,
                 ``proto``, ``bytes``, ``ascii``.
             timeout: Connection / RPC timeout in seconds.
-            insecure: When *True*, skip TLS certificate validation.
+            insecure: When *True*, use a plaintext gRPC channel (no TLS).
+                Only works against the device's insecure port.
             ca_cert: Path to CA certificate file.
             client_cert: Path to client certificate for mutual TLS.
             client_key: Path to client private key for mutual TLS.
@@ -237,6 +241,11 @@ class GnmiClient:
             tls_server_name: Override the TLS server name presented during
                 handshake (``grpc.ssl_target_name_override``). Useful when the
                 cert SAN/CN doesn't match the connect address.
+            tls_skip_verify: When *True* and no ``ca_cert`` is given, establish
+                a TLS (encrypted) channel but trust whatever certificate the
+                device presents (Trust-On-First-Use), without verifying it
+                against a CA. Equivalent to ``gnmic --skip-verify``. The channel
+                is encrypted but the server identity is not authenticated.
             max_message_length: Maximum inbound gRPC message size in bytes.
                 Defaults to gRPC's 4 MB; raise for devices that return very
                 large GetResponses (e.g. full-tree dumps).
@@ -267,6 +276,7 @@ class GnmiClient:
         self.client_key = client_key
         self.platform = platform.lower() if platform else 'auto'
         self.tls_server_name = tls_server_name
+        self.tls_skip_verify = tls_skip_verify
         self.max_message_length = max_message_length
         self.channel_options = channel_options or {}
         self._warn = warn_callback or logger.warning
@@ -410,6 +420,19 @@ class GnmiClient:
                 client_cert_data = None
                 client_key_data = None
 
+                # Trust-On-First-Use: when no CA is pinned and the caller has
+                # opted in to tls_skip_verify, fetch the certificate the server
+                # presents and trust it for this session. The channel is still
+                # encrypted; the server identity is simply not verified against
+                # a known CA (equivalent to gnmic's --skip-verify).
+                if ca_cert_data is None and self.tls_skip_verify:
+                    ca_cert_data = self._fetch_server_certificate()
+                    self._warn(
+                        "tls_skip_verify is enabled: trusting the certificate "
+                        "presented by {0}:{1} without CA verification (TOFU). "
+                        "The channel is encrypted but the server identity is "
+                        "NOT validated.".format(self.host, self.port))
+
                 if self.client_cert and self.client_key:
                     client_cert_data = self._read_cert_file(self.client_cert, 'client_cert')
                     client_key_data = self._read_cert_file(self.client_key, 'client_key')
@@ -488,6 +511,36 @@ class GnmiClient:
         except OSError as exc:
             raise GnmiConnectionError(
                 "Failed to read {0} file '{1}': {2}".format(label, path, exc))
+
+    def _fetch_server_certificate(self):
+        """Fetch the server's leaf certificate without verification (TOFU).
+
+        Opens a throwaway TLS connection with verification disabled, reads the
+        certificate the server presents, and returns it as PEM bytes so it can
+        be used as the root of trust for the real gRPC channel. This provides
+        the same practical behaviour as gnmic's ``--skip-verify`` (the channel
+        is encrypted, but the server identity is not checked against a known
+        CA) while staying within what Python's gRPC stack allows.
+        """
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        try:
+            with socket.create_connection(
+                    (self.host, int(self.port)), timeout=self.timeout) as sock:
+                with context.wrap_socket(sock, server_hostname=None) as tls_sock:
+                    der_cert = tls_sock.getpeercert(binary_form=True)
+        except (OSError, ssl.SSLError) as exc:
+            raise GnmiConnectionError(
+                "tls_skip_verify: failed to fetch certificate from "
+                "{0}:{1}: {2}".format(self.host, self.port, exc))
+
+        if not der_cert:
+            raise GnmiConnectionError(
+                "tls_skip_verify: server {0}:{1} did not present a "
+                "certificate.".format(self.host, self.port))
+
+        return ssl.DER_cert_to_PEM_cert(der_cert).encode('ascii')
 
     def disconnect(self):
         """Close the gRPC channel."""

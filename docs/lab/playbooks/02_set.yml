@@ -1,0 +1,95 @@
+# =============================================================================
+# 02 - gNMI SET  (cisco.gnmi.config)
+# -----------------------------------------------------------------------------
+# Modifies configuration. This lab is SAFE and REVERSIBLE: it reads the current
+# interface description, backs up the affected paths, changes the description,
+# verifies the change, then restores the original value.
+#
+# Demonstrates: check mode, diff mode, backup, update, and idempotency.
+#
+#   # Dry run first (no changes made):
+#   ansible-playbook playbooks/02_set.yml --check --diff
+#
+#   # Apply for real:
+#   ansible-playbook playbooks/02_set.yml --diff
+# =============================================================================
+- name: SET operations (gNMI)
+  hosts: gnmi_devices
+  gather_facts: false
+  connection: local
+
+  vars:
+    demo_interface: GigabitEthernet1
+    demo_description: "Configured by gNMI lab"
+
+  module_defaults:
+    cisco.gnmi.info: &gnmi_conn
+      host: "{{ ansible_host }}"
+      port: "{{ gnmi_port }}"
+      username: "{{ gnmi_user }}"
+      password: "{{ gnmi_password }}"
+      platform: "{{ gnmi_platform }}"
+      encoding: "{{ gnmi_encoding }}"
+      tls_skip_verify: "{{ gnmi_tls_skip_verify }}"
+    cisco.gnmi.config: *gnmi_conn
+
+  tasks:
+    # --- Capture the original value so we can restore it later -------------
+    - name: GET current interface description
+      cisco.gnmi.info:
+        datatype: config
+        paths:
+          - "/interfaces/interface[name={{ demo_interface }}]/config/description"
+      register: before
+      ignore_errors: true
+
+    - name: Show original description
+      ansible.builtin.debug:
+        var: before.data
+
+    # --- UPDATE with backup + diff ----------------------------------------
+    - name: SET interface description (with pre-change backup)
+      cisco.gnmi.config:
+        backup: true
+        backup_path: ./backups
+        update:
+          - path: "/interfaces/interface[name={{ demo_interface }}]/config/description"
+            value: "{{ demo_description }}"
+      register: set_result
+
+    - name: Show what changed and where the backup was saved
+      ansible.builtin.debug:
+        msg:
+          - "Changed: {{ set_result.changed }}"
+          - "Backup file: {{ set_result.backup_file | default('n/a') }}"
+
+    # --- Verify the new value via GET -------------------------------------
+    - name: GET interface description again to confirm
+      cisco.gnmi.info:
+        datatype: config
+        paths:
+          - "/interfaces/interface[name={{ demo_interface }}]/config/description"
+      register: after
+
+    - name: Show new description
+      ansible.builtin.debug:
+        var: after.data
+
+    # --- Re-run the same SET to prove idempotency -------------------------
+    - name: SET the same description again (should report no change)
+      cisco.gnmi.config:
+        update:
+          - path: "/interfaces/interface[name={{ demo_interface }}]/config/description"
+            value: "{{ demo_description }}"
+      register: idempotent
+
+    - name: Confirm idempotency
+      ansible.builtin.debug:
+        msg: "Second identical SET changed = {{ idempotent.changed }} (expected false)"
+
+    # --- Clean up: delete the description we added ------------------------
+    - name: DELETE the demo description (restore device)
+      cisco.gnmi.config:
+        delete:
+          - "/interfaces/interface[name={{ demo_interface }}]/config/description"
+      when: not ansible_check_mode

@@ -1,0 +1,4 @@
+# Backups created by the SET playbook are written here.
+# Keep this directory in the repo, ignore the generated JSON files.
+*.json
+!.gitignore

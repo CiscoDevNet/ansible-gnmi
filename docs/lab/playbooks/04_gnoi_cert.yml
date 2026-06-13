@@ -1,0 +1,88 @@
+# =============================================================================
+# 04 - gNOI Certificate Management  (cisco.gnmi.gnoi, service: cert)
+# -----------------------------------------------------------------------------
+# Operations: get, can_generate_csr (read-only)  |  install, rotate, revoke (mutating)
+# Requires IOS XE 17.3.1+.
+#
+# This playbook runs the READ-ONLY operations by default so it is safe.
+# The install/rotate steps are gated behind `cert_do_install` and are tagged,
+# so they only run when you explicitly opt in.
+#
+#   # Safe: inventory existing certs + capability probe
+#   ansible-playbook playbooks/04_gnoi_cert.yml
+#
+#   # Mutating: install a signed cert (provide your own PEM material first)
+#   ansible-playbook playbooks/04_gnoi_cert.yml -e cert_do_install=true
+#
+# NOTE: On IOS XE, cert/install expects the on-box GenerateCSR workflow.
+#       Loading an externally generated cert+key directly may be rejected
+#       with ABORTED, see CISCO_GNMI_CAVEATS.md in the collection.
+# =============================================================================
+- name: Certificate management (gNOI)
+  hosts: gnmi_devices
+  gather_facts: false
+  connection: local
+
+  vars:
+    cert_do_install: false
+    cert_id: grpc-server
+    # Paths to PEM material on the CONTROLLER (only needed for install/rotate).
+    cert_pem: "certs/{{ inventory_hostname }}.pem"
+    key_pem: "certs/{{ inventory_hostname }}.key"
+    ca_pem: "certs/ca.pem"
+
+  module_defaults:
+    cisco.gnmi.gnoi: &gnoi_conn
+      host: "{{ ansible_host }}"
+      port: "{{ gnmi_port }}"
+      username: "{{ gnmi_user }}"
+      password: "{{ gnmi_password }}"
+      platform: "{{ gnmi_platform }}"
+      tls_skip_verify: "{{ gnmi_tls_skip_verify }}"
+
+  tasks:
+    # --- READ-ONLY: list installed certificates ---------------------------
+    - name: List installed certificates (cert/get)
+      cisco.gnmi.gnoi:
+        service: cert
+        operation: get
+      register: cert_get
+
+    - name: Show installed certificates
+      ansible.builtin.debug:
+        var: cert_get.response
+
+    # --- READ-ONLY: can the device generate a CSR? ------------------------
+    - name: Probe CSR generation capability (cert/can_generate_csr)
+      cisco.gnmi.gnoi:
+        service: cert
+        operation: can_generate_csr
+        args:
+          key_size: 2048
+      register: csr_probe
+
+    - name: Show CSR capability
+      ansible.builtin.debug:
+        var: csr_probe.response
+
+    # --- MUTATING: install a signed certificate ---------------------------
+    # Only runs with -e cert_do_install=true. Provide your PEM files first.
+    - name: Install gRPC server certificate (cert/install)
+      cisco.gnmi.gnoi:
+        service: cert
+        operation: install
+        confirm: true
+        args:
+          certificate_id: "{{ cert_id }}"
+          certificate: "{{ lookup('file', cert_pem) }}"
+          private_key: "{{ lookup('file', key_pem) }}"
+          ca_certificate: "{{ lookup('file', ca_pem) }}"
+      register: cert_install
+      when: cert_do_install | bool
+      tags: [install]
+
+    - name: Show install result
+      ansible.builtin.debug:
+        var: cert_install
+      when: cert_do_install | bool
+      tags: [install]

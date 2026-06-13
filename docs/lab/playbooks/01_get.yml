@@ -1,0 +1,73 @@
+# =============================================================================
+# 01 - gNMI GET  (cisco.gnmi.info)
+# -----------------------------------------------------------------------------
+# Read-only. Retrieves configuration and operational state. Safe to run anytime.
+#
+#   ansible-playbook playbooks/01_get.yml
+# =============================================================================
+- name: GET operations (gNMI)
+  hosts: gnmi_devices
+  gather_facts: false
+  connection: local
+
+  module_defaults:
+    cisco.gnmi.info: &gnmi_conn
+      host: "{{ ansible_host }}"
+      port: "{{ gnmi_port }}"
+      username: "{{ gnmi_user }}"
+      password: "{{ gnmi_password }}"
+      platform: "{{ gnmi_platform }}"
+      encoding: "{{ gnmi_encoding }}"
+      tls_skip_verify: "{{ gnmi_tls_skip_verify }}"
+
+  tasks:
+    # --- OpenConfig: all interfaces ---------------------------------------
+    - name: GET all interfaces (OpenConfig)
+      cisco.gnmi.info:
+        paths:
+          - /interfaces/interface
+      register: interfaces
+
+    - name: Show interface payload
+      ansible.builtin.debug:
+        var: interfaces.data
+
+    # --- OpenConfig: just the hostname (config datatype) ------------------
+    - name: GET system hostname (config only)
+      cisco.gnmi.info:
+        datatype: config
+        paths:
+          - /system/config/hostname
+      register: hostname
+
+    - name: Show hostname
+      ansible.builtin.debug:
+        var: hostname.data
+
+    # --- Operational state: interface counters ----------------------------
+    - name: GET operational counters for one interface
+      cisco.gnmi.info:
+        datatype: operational
+        paths:
+          - /interfaces/interface[name=GigabitEthernet1]/state/counters
+      register: counters
+      ignore_errors: true   # interface name may differ per platform
+
+    - name: Show counters (if the interface exists)
+      ansible.builtin.debug:
+        var: counters.data
+      when: not counters.failed
+
+    # --- Cisco IOS XE native model (requires origin: rfc7951) -------------
+    - name: GET the IOS XE native hostname (native YANG model)
+      cisco.gnmi.info:
+        origin: rfc7951
+        paths:
+          - /Cisco-IOS-XE-native:native/hostname
+      register: native_hostname
+      ignore_errors: true
+
+    - name: Show native hostname
+      ansible.builtin.debug:
+        var: native_hostname.data
+      when: not native_hostname.failed

@@ -1,0 +1,102 @@
+# =============================================================================
+# 05 - gNOI OS Upgrade  (cisco.gnmi.gnoi, service: os)
+# -----------------------------------------------------------------------------
+# Requires IOS XE 17.5.1+. The upgrade is split into independent steps so YOU
+# decide when the device reboots:
+#
+#   verify  -> read running version          (read-only, always safe)
+#   install -> stream + stage the image      (NO reboot)
+#   activate-> boot into staged image        (REBOOTS the device)
+#   verify  -> confirm new version after boot
+#
+# Two stages, gated by variables. Run them deliberately, ideally one device at
+# a time (use --limit device1).
+#
+#   # Stage 0 - just read the running version (safe):
+#   ansible-playbook playbooks/05_gnoi_os_upgrade.yml --limit device1
+#
+#   # Stage 1 - stream + stage the image (no reboot):
+#   ansible-playbook playbooks/05_gnoi_os_upgrade.yml --limit device1 \
+#       -e os_image_path=/images/cat9k_iosxe.17.18.01a.SPA.bin -e do_install=true
+#
+#   # Stage 2 - activate and REBOOT into the staged image:
+#   ansible-playbook playbooks/05_gnoi_os_upgrade.yml --limit device1 \
+#       -e os_image_path=/images/cat9k_iosxe.17.18.01a.SPA.bin -e do_activate=true
+#
+# Notes:
+# - When you omit args.version, the module reads CW_FULL_VERSION from the .bin
+#   header, so you normally only need image_path.
+# - The image is streamed from the CONTROLLER; it does not need to be pre-copied.
+# - activate requires the running-config to be saved. IOS XE gNMI config
+#   persistence handles this after any successful SET (see the LAB_GUIDE).
+# =============================================================================
+- name: OS upgrade (gNOI)
+  hosts: gnmi_devices
+  gather_facts: false
+  connection: local
+
+  vars:
+    os_image_path: ""        # REQUIRED for install/activate, e.g. /images/cat9k_iosxe.17.18.01a.SPA.bin
+    do_install: false
+    do_activate: false
+
+  module_defaults:
+    cisco.gnmi.gnoi: &gnoi_conn
+      host: "{{ ansible_host }}"
+      port: "{{ gnmi_port }}"
+      username: "{{ gnmi_user }}"
+      password: "{{ gnmi_password }}"
+      platform: "{{ gnmi_platform }}"
+      tls_skip_verify: "{{ gnmi_tls_skip_verify }}"
+
+  tasks:
+    # --- Always: verify the currently running version ---------------------
+    - name: Verify running OS version (os/verify)
+      cisco.gnmi.gnoi:
+        service: os
+        operation: verify
+      register: os_before
+
+    - name: Show running version
+      ansible.builtin.debug:
+        var: os_before.response
+
+    # --- Guard: install/activate need an image path -----------------------
+    - name: Fail early if an image is required but not provided
+      ansible.builtin.fail:
+        msg: "Set -e os_image_path=/path/to/image.bin to install or activate."
+      when:
+        - (do_install | bool) or (do_activate | bool)
+        - os_image_path | length == 0
+
+    # --- Stage 1: stream + stage the image (NO reboot) --------------------
+    - name: Install (stage) OS image (os/install)
+      cisco.gnmi.gnoi:
+        service: os
+        operation: install
+        chunk_size: 1048576
+        args:
+          image_path: "{{ os_image_path }}"
+      register: os_install
+      when: do_install | bool
+
+    - name: Show install/staging result
+      ansible.builtin.debug:
+        var: os_install.response
+      when: do_install | bool
+
+    # --- Stage 2: activate the staged image (REBOOTS) ---------------------
+    - name: Activate staged OS image and reboot (os/activate)
+      cisco.gnmi.gnoi:
+        service: os
+        operation: activate
+        confirm: true          # required for destructive operations
+        args:
+          image_path: "{{ os_image_path }}"   # lets the module derive the staged version
+      register: os_activate
+      when: do_activate | bool
+
+    - name: Show activate result
+      ansible.builtin.debug:
+        var: os_activate.response
+      when: do_activate | bool

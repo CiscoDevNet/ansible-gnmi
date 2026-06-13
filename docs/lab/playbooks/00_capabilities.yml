@@ -1,0 +1,78 @@
+# =============================================================================
+# 00 - gNMI Capabilities
+# -----------------------------------------------------------------------------
+# The simplest RPC. Confirms connectivity, TLS (TOFU), and auth all work, and
+# lists the YANG models / encodings the device supports. Run this FIRST.
+#
+#   ansible-playbook playbooks/00_capabilities.yml
+# =============================================================================
+- name: Capabilities check (gNMI)
+  hosts: gnmi_devices
+  gather_facts: false
+  connection: local
+
+  vars:
+    # gNMI Encoding enum (from gnmi.proto) - devices report the integer value.
+    gnmi_encoding_names:
+      "0": JSON
+      "1": BYTES
+      "2": PROTO
+      "3": ASCII
+      "4": JSON_IETF
+
+  # module_defaults injects the shared connection settings into every
+  # cisco.gnmi.* task so we never repeat host/username/TLS on each task.
+  module_defaults:
+    cisco.gnmi.capabilities: &gnmi_conn
+      host: "{{ ansible_host }}"
+      port: "{{ gnmi_port }}"
+      username: "{{ gnmi_user }}"
+      password: "{{ gnmi_password }}"
+      platform: "{{ gnmi_platform }}"
+      tls_skip_verify: "{{ gnmi_tls_skip_verify }}"
+
+  tasks:
+    - name: Retrieve gNMI capabilities
+      cisco.gnmi.capabilities:
+      register: caps
+
+    - name: Show gNMI version and supported encodings
+      ansible.builtin.debug:
+        msg:
+          - "Device: {{ inventory_hostname }} ({{ ansible_host }})"
+          - "gNMI version: {{ caps.data.gnmi_version | default('n/a') }}"
+          - "Supported encodings: {{ caps.data.supported_encodings
+             | map('string') | map('extract', gnmi_encoding_names)
+             | map('default', 'UNKNOWN') | list }}"
+
+    - name: Show how many YANG models the device advertises
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} advertises {{ caps.data.supported_models | default([]) | length }} models"
+
+    # --- Print the full model list (name @ version, sorted) ---------------
+    # Set -e show_models=true to dump every model name to the screen.
+    - name: Show the full list of supported YANG models
+      ansible.builtin.debug:
+        msg: "{{ caps.data.supported_models | map(attribute='name') | sort }}"
+      when: show_models | default(false) | bool
+
+    # --- Always save the full list to a file per device -------------------
+    # One "name<TAB>organization<TAB>version" line per model, sorted by name.
+    # Files land in <repo root>/models/ regardless of where you run from.
+    - name: Ensure the models/ output directory exists
+      ansible.builtin.file:
+        path: "{{ playbook_dir | dirname }}/models"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Save the full model list to models/<host>_models.txt
+      ansible.builtin.template:
+        src: models.txt.j2
+        dest: "{{ playbook_dir | dirname }}/models/{{ inventory_hostname }}_models.txt"
+        mode: "0644"
+      delegate_to: localhost
+
+    - name: Where the model list was written
+      ansible.builtin.debug:
+        msg: "Full model list saved to models/{{ inventory_hostname }}_models.txt"

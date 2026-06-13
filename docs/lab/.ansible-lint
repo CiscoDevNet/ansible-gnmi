@@ -1,0 +1,14 @@
+---
+# ansible-lint config for the gNMI lab playbooks.
+
+exclude_paths:
+  - venv/
+  - .lintenv/
+  - models/
+  - backups/
+
+# Connection arguments (host, username, password, ...) are supplied to every
+# cisco.gnmi task through `module_defaults`, which ansible-lint does not
+# evaluate. That makes it wrongly report "missing required arguments: host".
+skip_list:
+  - args[module]

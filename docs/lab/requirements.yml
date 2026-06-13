@@ -1,0 +1,4 @@
+# Ansible collection that provides the gNMI / gNOI modules used in this lab.
+collections:
+  - name: cisco.gnmi
+    version: ">=4.1.0"

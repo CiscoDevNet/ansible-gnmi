@@ -1,0 +1,6 @@
+{# Per-device list of gNMI-supported YANG models, written by 00_capabilities.yml #}
+# {{ inventory_hostname }} ({{ ansible_host }}) - {{ caps.data.supported_models | length }} models
+# name<TAB>organization<TAB>version
+{% for m in caps.data.supported_models | sort(attribute='name') %}
+{{ m.name | regex_replace('\s+', ' ') | trim }}	{{ m.organization | default('') | regex_replace('\s+', ' ') | trim }}	{{ m.version | default('') | regex_replace('\s+', ' ') | trim }}
+{% endfor %}

@@ -1,0 +1,26 @@
+# Connection settings shared by every device in [gnmi_devices].
+#
+# LAB CREDENTIALS ONLY — in production use ansible-vault:
+#   ansible-vault encrypt inventory/group_vars/gnmi_devices.yml
+#
+# These vars are referenced by every playbook in playbooks/.
+
+# --- Authentication -------------------------------------------------------
+gnmi_user: admin
+gnmi_password: Cisco123
+
+# --- Transport ------------------------------------------------------------
+gnmi_port: 9339            # secure gRPC/gNMI/gNOI port on IOS XE
+gnmi_platform: iosxe       # enables IOS XE profile validation (port/encoding/subscribe rules)
+gnmi_encoding: json_ietf
+
+# --- TLS: Trust-On-First-Use (TOFU) --------------------------------------
+# IOS XE presents a self-signed cert by default. tls_skip_verify gives us an
+# ENCRYPTED channel that trusts whatever cert the device presents on first
+# connect (like `gnmic --skip-verify`). The server identity is NOT verified,
+# so only use this on a trusted lab network. A warning prints on every run.
+#
+# To move to verified TLS later, set gnmi_ca_cert to a CA file and the
+# playbooks will pin it instead (ca_cert takes precedence over tls_skip_verify).
+gnmi_tls_skip_verify: true
+gnmi_ca_cert: ""           # leave empty to use TOFU; set a path to pin a CA

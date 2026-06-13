@@ -1,0 +1,15 @@
+# Python virtual environments
+venv/
+.lintenv/
+__pycache__/
+*.pyc
+
+# Generated lab artifacts
+backups/*.json
+models/*.txt
+
+# Certificate material (never commit private keys)
+certs/
+
+# Ansible
+*.retry

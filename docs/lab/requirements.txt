@@ -1,0 +1,5 @@
+# Python dependencies for the cisco.gnmi collection (gRPC transport + TLS).
+grpcio>=1.50.0
+grpcio-tools>=1.50.0
+protobuf>=4.21.0
+cryptography>=38.0.0

@@ -1,0 +1,27 @@
+---
+# yamllint config for the gNMI lab playbooks.
+# Aligned with ansible-lint's required yamllint rules so both agree.
+extends: default
+
+ignore: |
+  venv/
+  .lintenv/
+  models/
+  backups/
+
+rules:
+  line-length:
+    max: 160
+    level: warning
+  truthy:
+    allowed-values: ["true", "false"]
+    check-keys: false
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: disable
+  document-start: disable
+  braces:
+    max-spaces-inside: 1
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true

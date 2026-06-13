@@ -1,0 +1,80 @@
+# =============================================================================
+# 03 - gNMI Subscribe  (cisco.gnmi.subscribe)
+# -----------------------------------------------------------------------------
+# Streaming telemetry. Read-only. Three flavours are shown:
+#   1. ONCE   - one-shot snapshot, returns immediately
+#   2. STREAM/sample    - periodic samples for a fixed duration
+#   3. STREAM/on_change - push updates only when state changes
+#
+# On IOS XE the platform profile restricts STREAM subscriptions to
+# on_change / sample modes (enforced automatically).
+#
+#   ansible-playbook playbooks/03_subscribe.yml
+# =============================================================================
+- name: Subscribe operations (gNMI)
+  hosts: gnmi_devices
+  gather_facts: false
+  connection: local
+
+  vars:
+    demo_interface: GigabitEthernet1
+
+  module_defaults:
+    cisco.gnmi.subscribe: &gnmi_conn
+      host: "{{ ansible_host }}"
+      port: "{{ gnmi_port }}"
+      username: "{{ gnmi_user }}"
+      password: "{{ gnmi_password }}"
+      platform: "{{ gnmi_platform }}"
+      tls_skip_verify: "{{ gnmi_tls_skip_verify }}"
+
+  tasks:
+    # --- ONCE: immediate counter snapshot ---------------------------------
+    - name: Subscribe ONCE for an interface counter snapshot
+      cisco.gnmi.subscribe:
+        subscribe_mode: once
+        subscriptions:
+          - path: "/interfaces/interface[name={{ demo_interface }}]/state/counters"
+            mode: sample
+            sample_interval: 10
+      register: once_snapshot
+      ignore_errors: true
+
+    - name: Show the one-shot snapshot
+      ansible.builtin.debug:
+        var: once_snapshot.updates
+      when: not once_snapshot.failed
+
+    # --- STREAM / sample: periodic samples for a fixed window -------------
+    - name: Subscribe STREAM (sample) to oper-status for 30 seconds
+      cisco.gnmi.subscribe:
+        subscribe_mode: stream
+        subscribe_duration: 30
+        subscriptions:
+          - path: /interfaces/interface/state/oper-status
+            mode: sample
+            sample_interval: 10
+      register: stream_sample
+      ignore_errors: true
+
+    - name: Show how many sampled updates were received
+      ansible.builtin.debug:
+        msg: "Received {{ stream_sample.updates | default([]) | length }} sampled updates"
+      when: not stream_sample.failed
+
+    # --- STREAM / on_change: push only when state changes -----------------
+    # Flap an interface (or wait) during this window to see updates arrive.
+    - name: Subscribe STREAM (on_change) to oper-status for 30 seconds
+      cisco.gnmi.subscribe:
+        subscribe_mode: stream
+        subscribe_duration: 30
+        subscriptions:
+          - path: /interfaces/interface/state/oper-status
+            mode: on_change
+      register: stream_onchange
+      ignore_errors: true
+
+    - name: Show on-change updates
+      ansible.builtin.debug:
+        var: stream_onchange.updates
+      when: not stream_onchange.failed

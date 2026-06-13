@@ -1,0 +1,64 @@
+# =============================================================================
+# 06 - gNOI Factory Reset  (cisco.gnmi.gnoi, service: factory_reset)
+# -----------------------------------------------------------------------------
+#  *** DESTRUCTIVE - WIPES THE DEVICE. RUN THIS LAST. ***
+#
+# Requires IOS XE 17.7.1+. Uses the SAME connection and auth as the OS service,
+# so the TOFU / self-signed setup used everywhere else in this lab is enough.
+# No separate provisioned/signed certificate is required.
+#
+# This playbook does NOTHING unless you explicitly opt in with BOTH:
+#   -e factory_reset_confirm=true   (your acknowledgement)
+# and the module's own `confirm: true` (already set below).
+#
+#   # Reset a single device, deliberately:
+#   ansible-playbook playbooks/06_gnoi_factory_reset.yml \
+#       --limit device3 -e factory_reset_confirm=true
+#
+# Some IOS XE builds require zero_fill: true and reject false with
+# INVALID_ARGUMENT, so we default it to true here.
+# =============================================================================
+- name: Factory reset (gNOI)
+  hosts: gnmi_devices
+  gather_facts: false
+  connection: local
+
+  vars:
+    factory_reset_confirm: false   # extra human gate; must be true to proceed
+    factory_zero_fill: true
+    factory_retain_certs: false
+
+  module_defaults:
+    cisco.gnmi.gnoi: &gnoi_conn
+      host: "{{ ansible_host }}"
+      port: "{{ gnmi_port }}"
+      username: "{{ gnmi_user }}"
+      password: "{{ gnmi_password }}"
+      platform: "{{ gnmi_platform }}"
+      tls_skip_verify: "{{ gnmi_tls_skip_verify }}"
+
+  tasks:
+    - name: Refuse to run unless explicitly confirmed
+      ansible.builtin.fail:
+        msg: >-
+          Factory reset is destructive. Re-run with
+          -e factory_reset_confirm=true (and ideally --limit <one device>).
+      when: not (factory_reset_confirm | bool)
+
+    - name: Final pause before wiping the device
+      ansible.builtin.pause:
+        prompt: "About to FACTORY RESET {{ inventory_hostname }} ({{ ansible_host }}). Ctrl-C to abort, Enter to continue"
+
+    - name: Start factory reset (factory_reset/start)
+      cisco.gnmi.gnoi:
+        service: factory_reset
+        operation: start
+        confirm: true
+        args:
+          zero_fill: "{{ factory_zero_fill | bool }}"
+          retain_certs: "{{ factory_retain_certs | bool }}"
+      register: reset_result
+
+    - name: Show reset result
+      ansible.builtin.debug:
+        var: reset_result

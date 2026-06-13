@@ -1,0 +1,126 @@
+---
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Device-free integration tests for the cisco.gnmi.gnoi module.
+#
+# These tasks never reach a device: the gRPC channel is created lazily, and the
+# module validates the argument spec, the platform/operation registry, the
+# destructive-operation confirm gate, and the check-mode short-circuit before
+# any RPC is sent. ``host: localhost`` with ``insecure: true`` keeps the channel
+# from doing any network I/O. A reachable device is therefore not required.
+
+- name: Reject an unknown operation for a known service
+  cisco.gnmi.gnoi:
+    host: localhost
+    insecure: true
+    username: admin
+    password: not-a-real-secret
+    service: cert
+    operation: definitely_not_an_operation
+  register: unknown_operation
+  ignore_errors: true
+
+- name: Assert the unknown operation failed with a helpful message
+  ansible.builtin.assert:
+    that:
+      - unknown_operation is failed
+      - "'Unknown operation' in unknown_operation.msg"
+    fail_msg: "Expected an 'Unknown operation' failure, got: {{ unknown_operation }}"
+
+- name: Reject a destructive os/activate without confirm
+  cisco.gnmi.gnoi:
+    host: localhost
+    insecure: true
+    username: admin
+    password: not-a-real-secret
+    service: os
+    operation: activate
+    args:
+      version: "17.18.01a"
+  register: activate_no_confirm
+  ignore_errors: true
+
+- name: Assert os/activate is gated behind confirm
+  ansible.builtin.assert:
+    that:
+      - activate_no_confirm is failed
+      - "'requires confirm: true' in activate_no_confirm.msg"
+    fail_msg: "Expected a confirm-gate failure, got: {{ activate_no_confirm }}"
+
+- name: Reject a destructive factory_reset/start without confirm
+  cisco.gnmi.gnoi:
+    host: localhost
+    insecure: true
+    username: admin
+    password: not-a-real-secret
+    service: factory_reset
+    operation: start
+  register: reset_no_confirm
+  ignore_errors: true
+
+- name: Assert factory_reset/start is gated behind confirm
+  ansible.builtin.assert:
+    that:
+      - reset_no_confirm is failed
+      - "'requires confirm: true' in reset_no_confirm.msg"
+    fail_msg: "Expected a confirm-gate failure, got: {{ reset_no_confirm }}"
+
+- name: Reject a request with neither username nor token
+  cisco.gnmi.gnoi:
+    host: localhost
+    insecure: true
+    service: cert
+    operation: get
+  register: missing_auth
+  ignore_errors: true
+
+- name: Assert authentication is required
+  ansible.builtin.assert:
+    that:
+      - missing_auth is failed
+      - "'username' in missing_auth.msg"
+      - "'token' in missing_auth.msg"
+    fail_msg: "Expected a missing-auth failure, got: {{ missing_auth }}"
+
+- name: Reject an unsupported service value
+  cisco.gnmi.gnoi:
+    host: localhost
+    insecure: true
+    username: admin
+    password: not-a-real-secret
+    service: not_a_service
+    operation: get
+  register: bad_service
+  ignore_errors: true
+
+- name: Assert the unsupported service is rejected by the argument spec
+  ansible.builtin.assert:
+    that:
+      - bad_service is failed
+    fail_msg: "Expected the invalid service to be rejected, got: {{ bad_service }}"
+
+- name: Run a mutating operation in check mode (no RPC is sent)
+  cisco.gnmi.gnoi:
+    host: localhost
+    insecure: true
+    username: admin
+    password: not-a-real-secret
+    service: cert
+    operation: install
+    args:
+      certificate_id: test-cert
+      certificate: "dummy-cert-body"
+      private_key: not-a-real-key
+  check_mode: true
+  register: check_mode_install
+
+- name: Assert check mode reports a change but skips the RPC
+  ansible.builtin.assert:
+    that:
+      - check_mode_install is changed
+      - check_mode_install.skipped_rpc | bool
+      - check_mode_install.service == 'cert'
+      - check_mode_install.operation == 'install'
+    fail_msg: "Expected a check-mode skip, got: {{ check_mode_install }}"

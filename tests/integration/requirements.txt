@@ -1,0 +1,9 @@
+# Copyright 2025 Cisco Systems, Inc. and its affiliates
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# gRPC runtime required by the gnoi module. ansible-test installs these into
+# the test environment so the module under test can import its client.
+grpcio
+protobuf
+cryptography
